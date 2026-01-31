@@ -17,6 +17,9 @@ export async function POST(
       );
     }
 
+    // Normalize email
+    const normalizedEmail = student_email.toLowerCase().trim();
+
     // Find the test
     const { data: test, error: testError } = await supabaseAdmin
       .from('tests')
@@ -35,23 +38,62 @@ export async function POST(
       );
     }
 
+    // Check if this email has already taken this test
+    const { data: existingSubmission } = await supabaseAdmin
+      .from('submissions')
+      .select('id, status')
+      .eq('test_id', test.id)
+      .eq('student_email', normalizedEmail)
+      .single();
+
+    if (existingSubmission) {
+      if (existingSubmission.status === 'in_progress') {
+        // Allow resuming an in-progress test
+        return NextResponse.json({ submissionId: existingSubmission.id }, { status: 200 });
+      }
+      // Test already completed
+      return NextResponse.json(
+        { error: 'You have already taken this test. Each email can only be used once.' },
+        { status: 400 }
+      );
+    }
+
     // Create a new submission
     const { data: submission, error: submissionError } = await supabaseAdmin
       .from('submissions')
       .insert({
         test_id: test.id,
         student_name,
-        student_email,
+        student_email: normalizedEmail,
         status: 'in_progress',
         answers: {},
         mcq_score: 0,
         coding_score: 0,
         total_score: 0,
+        violation_count: 0,
+        violations: [],
+        auto_submitted: false,
       })
       .select()
       .single();
 
-    if (submissionError) throw submissionError;
+    if (submissionError) {
+      // Handle unique constraint violation
+      if (submissionError.code === '23505') {
+        return NextResponse.json(
+          { error: 'You have already taken this test. Each email can only be used once.' },
+          { status: 400 }
+        );
+      }
+      throw submissionError;
+    }
+
+    // Update student name in batch_students table if they exist there
+    // This allows admin to see the name in batch management after student takes test
+    await supabaseAdmin
+      .from('batch_students')
+      .update({ name: student_name })
+      .eq('email', normalizedEmail);
 
     return NextResponse.json({ submissionId: submission.id }, { status: 201 });
   } catch (error) {

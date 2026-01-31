@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState, useCallback, use } from 'react';
+import { useEffect, useState, useCallback, use, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import CodeEditor from '@/components/CodeEditor';
+import Toast, { useToast } from '@/components/Toast';
 import { Test, Question, TestCase } from '@/types';
 
 interface RunResult {
@@ -32,6 +33,12 @@ export default function TakeTestPage({ params }: { params: Promise<{ code: strin
   const [running, setRunning] = useState(false);
   const [runResults, setRunResults] = useState<Record<string, RunResult[]>>({});
 
+  // Security state
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [violationCount, setViolationCount] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const toast = useToast();
+
   const fetchTestData = useCallback(async () => {
     try {
       const response = await fetch(`/api/test/${code}`);
@@ -47,6 +54,62 @@ export default function TakeTestPage({ params }: { params: Promise<{ code: strin
     }
   }, [code]);
 
+  // Report violation to server
+  const reportViolation = useCallback(async (type: string, message: string) => {
+    const submissionId = sessionStorage.getItem(`test_${code}_submission`);
+    if (!submissionId || submitted || submitting) return;
+
+    try {
+      const response = await fetch(`/api/test/${code}/violation`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          submissionId,
+          violation: { type, message },
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setViolationCount(data.violationCount);
+
+        if (data.shouldAutoSubmit) {
+          toast.error('Test auto-submitted due to multiple violations', 10000);
+          setSubmitted(true);
+          sessionStorage.removeItem(`test_${code}_submission`);
+          sessionStorage.removeItem(`test_${code}_name`);
+          sessionStorage.removeItem(`test_${code}_start`);
+          // Redirect after showing message
+          setTimeout(() => router.push(`/test/${code}`), 3000);
+        } else {
+          toast.warning(data.message, 5000);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to report violation:', error);
+    }
+  }, [code, submitted, submitting, toast, router]);
+
+  // Enter fullscreen
+  const enterFullscreen = useCallback(async () => {
+    // Don't try to enter fullscreen if test is already submitted
+    if (submitted || submitting) return;
+
+    try {
+      if (containerRef.current && document.fullscreenElement === null) {
+        await containerRef.current.requestFullscreen();
+        setIsFullscreen(true);
+      }
+    } catch (error) {
+      console.error('Failed to enter fullscreen:', error);
+      // Only show warning if not submitted
+      if (!submitted && !submitting) {
+        toast.warning('Please allow fullscreen mode for the test');
+      }
+    }
+  }, [toast, submitted, submitting]);
+
+  // Initial setup
   useEffect(() => {
     const submissionId = sessionStorage.getItem(`test_${code}_submission`);
     const savedStartTime = sessionStorage.getItem(`test_${code}_start`);
@@ -59,6 +122,88 @@ export default function TakeTestPage({ params }: { params: Promise<{ code: strin
     setStartTime(parseInt(savedStartTime || Date.now().toString()));
     fetchTestData();
   }, [code, router, fetchTestData]);
+
+  // Auto-enter fullscreen on load (separate effect to avoid dependency issues)
+  useEffect(() => {
+    if (submitted || submitting) return;
+
+    const timer = setTimeout(() => {
+      enterFullscreen();
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [enterFullscreen, submitted, submitting]);
+
+  // Fullscreen change detection
+  useEffect(() => {
+    // Don't listen for fullscreen changes if test is done
+    if (submitted || submitting) return;
+
+    const handleFullscreenChange = () => {
+      const isNowFullscreen = document.fullscreenElement !== null;
+      setIsFullscreen(isNowFullscreen);
+
+      if (!isNowFullscreen) {
+        reportViolation('fullscreen_exit', 'Attempted to exit fullscreen mode');
+        // Try to re-enter fullscreen after a short delay
+        setTimeout(() => {
+          enterFullscreen();
+        }, 100);
+      }
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, [submitted, submitting, reportViolation, enterFullscreen]);
+
+  // Visibility change detection (tab switch)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden && !submitted && !submitting) {
+        reportViolation('visibility_hidden', 'Switched to another tab or window');
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [submitted, submitting, reportViolation]);
+
+  // Window blur detection (clicking outside)
+  useEffect(() => {
+    const handleBlur = () => {
+      if (!submitted && !submitting) {
+        reportViolation('window_blur', 'Window lost focus');
+      }
+    };
+
+    window.addEventListener('blur', handleBlur);
+    return () => window.removeEventListener('blur', handleBlur);
+  }, [submitted, submitting, reportViolation]);
+
+  // Keyboard shortcut prevention
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Prevent common shortcuts
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        ['t', 'n', 'w', 'Tab'].includes(e.key)
+      ) {
+        e.preventDefault();
+        toast.warning('This keyboard shortcut is disabled during the test');
+      }
+      // Prevent Alt+Tab on Windows (limited effectiveness)
+      if (e.altKey && e.key === 'Tab') {
+        e.preventDefault();
+      }
+      // Prevent F11 (fullscreen toggle)
+      if (e.key === 'F11') {
+        e.preventDefault();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [toast]);
 
   // Timer effect
   useEffect(() => {
@@ -102,27 +247,30 @@ export default function TakeTestPage({ params }: { params: Promise<{ code: strin
         sessionStorage.removeItem(`test_${code}_submission`);
         sessionStorage.removeItem(`test_${code}_name`);
         sessionStorage.removeItem(`test_${code}_start`);
+
+        // Exit fullscreen after submission
+        if (document.fullscreenElement) {
+          document.exitFullscreen();
+        }
       }
     } catch {
-      alert('Failed to submit');
+      toast.error('Failed to submit test');
     } finally {
       setSubmitting(false);
     }
-  }, [code, answers, submitting, submitted]);
+  }, [code, answers, submitting, submitted, toast]);
 
   const handleRunCode = async (questionId: string, testCases: TestCase[]) => {
     const studentCode = answers[questionId];
     if (!studentCode) {
-      alert('Please write some code first');
+      toast.warning('Please write some code first');
       return;
     }
 
     setRunning(true);
-    // Clear previous results for this question
     setRunResults((prev) => ({ ...prev, [questionId]: [] }));
 
     try {
-      // Only run against visible test cases
       const visibleTestCases = testCases.filter((tc) => !tc.is_hidden);
 
       const response = await fetch('/api/test/run', {
@@ -140,10 +288,10 @@ export default function TakeTestPage({ params }: { params: Promise<{ code: strin
         setRunResults((prev) => ({ ...prev, [questionId]: data.results }));
       } else {
         const error = await response.json();
-        alert(error.error || 'Failed to run code');
+        toast.error(error.error || 'Failed to run code');
       }
     } catch {
-      alert('Failed to run code');
+      toast.error('Failed to run code');
     } finally {
       setRunning(false);
     }
@@ -151,7 +299,6 @@ export default function TakeTestPage({ params }: { params: Promise<{ code: strin
 
   const handleAnswerChange = (questionId: string, answer: string) => {
     setAnswers((prev) => ({ ...prev, [questionId]: answer }));
-    // Clear run results when code changes
     if (runResults[questionId]) {
       setRunResults((prev) => ({ ...prev, [questionId]: [] }));
     }
@@ -172,8 +319,14 @@ export default function TakeTestPage({ params }: { params: Promise<{ code: strin
   }
 
   if (submitted && result) {
+    // Calculate total possible scores from questions
+    const mcqTotal = questions.filter(q => q.type === 'mcq').reduce((sum, q) => sum + q.points, 0);
+    const codingTotal = questions.filter(q => q.type === 'coding').reduce((sum, q) => sum + q.points, 0);
+    const totalPossible = mcqTotal + codingTotal;
+
     return (
       <div className="min-h-screen bg-background flex items-center justify-center px-4">
+        <Toast messages={toast.toasts} onRemove={toast.removeToast} />
         <div className="w-full max-w-sm text-center">
           <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-emerald-500/20 flex items-center justify-center">
             <svg className="w-8 h-8 text-emerald-500 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -186,17 +339,29 @@ export default function TakeTestPage({ params }: { params: Promise<{ code: strin
           <div className="grid grid-cols-3 gap-3 mb-6">
             <div className="p-4 bg-card border border-border/50 rounded-lg">
               <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">MCQ</p>
-              <p className="text-xl font-mono text-foreground">{result.mcq_score}</p>
+              <p className="text-xl font-mono text-foreground">
+                {result.mcq_score}<span className="text-sm text-muted-foreground">/{mcqTotal}</span>
+              </p>
             </div>
             <div className="p-4 bg-card border border-border/50 rounded-lg">
               <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Code</p>
-              <p className="text-xl font-mono text-foreground">{result.coding_score}</p>
+              <p className="text-xl font-mono text-foreground">
+                {result.coding_score}<span className="text-sm text-muted-foreground">/{codingTotal}</span>
+              </p>
             </div>
             <div className="p-4 bg-primary/10 border border-primary/30 rounded-lg">
               <p className="text-[10px] text-primary uppercase tracking-wider mb-1">Total</p>
-              <p className="text-xl font-mono text-primary">{result.total_score}</p>
+              <p className="text-xl font-mono text-primary">
+                {result.total_score}<span className="text-sm text-primary/70">/{totalPossible}</span>
+              </p>
             </div>
           </div>
+
+          {violationCount > 0 && (
+            <p className="text-xs text-amber-500 mb-4">
+              {violationCount} violation(s) recorded during the test
+            </p>
+          )}
 
           <p className="text-xs text-muted-foreground mb-6">Results will be sent to your email</p>
 
@@ -220,12 +385,33 @@ export default function TakeTestPage({ params }: { params: Promise<{ code: strin
   }
 
   const currentQuestion = questions[currentIndex];
-  const isLowTime = timeLeft < 5 * 60 * 1000; // Less than 5 minutes
-  const isCriticalTime = timeLeft < 60 * 1000; // Less than 1 minute
+  const isLowTime = timeLeft < 5 * 60 * 1000;
+  const isCriticalTime = timeLeft < 60 * 1000;
   const currentRunResults = runResults[currentQuestion.id] || [];
 
   return (
-    <div className="h-screen bg-background flex flex-col overflow-hidden">
+    <div ref={containerRef} className="h-screen bg-background flex flex-col overflow-hidden">
+      <Toast messages={toast.toasts} onRemove={toast.removeToast} />
+
+      {/* Fullscreen prompt overlay */}
+      {!isFullscreen && !submitted && (
+        <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center">
+          <div className="text-center p-8">
+            <svg className="w-16 h-16 text-amber-500 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+            </svg>
+            <h2 className="text-xl font-semibold text-white mb-2">Fullscreen Required</h2>
+            <p className="text-zinc-400 mb-6">This test must be taken in fullscreen mode</p>
+            <button
+              onClick={enterFullscreen}
+              className="h-10 px-6 bg-primary hover:bg-primary/90 text-white font-medium rounded transition-colors"
+            >
+              Enter Fullscreen
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <header className="flex-shrink-0 h-12 px-4 flex items-center justify-between border-b border-border/50 bg-card/50">
         <div className="flex items-center gap-4">
@@ -233,6 +419,11 @@ export default function TakeTestPage({ params }: { params: Promise<{ code: strin
           <span className="text-xs text-muted-foreground">
             Q{currentIndex + 1}/{questions.length}
           </span>
+          {violationCount > 0 && (
+            <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-600 dark:text-amber-400">
+              {violationCount}/3 warnings
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-3">
           <div className={`px-3 py-1.5 rounded font-mono text-sm ${
@@ -363,7 +554,6 @@ export default function TakeTestPage({ params }: { params: Promise<{ code: strin
                               </pre>
                             </div>
                           </div>
-                          {/* Show actual output if run */}
                           {runResult && !runResult.passed && (
                             <div className="mt-2 pt-2 border-t border-border/50">
                               {runResult.error ? (
@@ -390,7 +580,7 @@ export default function TakeTestPage({ params }: { params: Promise<{ code: strin
                 </div>
               )}
 
-              {/* Code Editor with Run button */}
+              {/* Code Editor */}
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-xs text-muted-foreground uppercase tracking-wider">Your Solution (C++)</p>

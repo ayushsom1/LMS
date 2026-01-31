@@ -32,6 +32,12 @@ export interface Question {
   order_index: number;
 }
 
+export interface Violation {
+  type: 'tab_switch' | 'window_blur' | 'fullscreen_exit' | 'visibility_hidden';
+  timestamp: string;
+  message: string;
+}
+
 export interface Submission {
   id: string;
   test_id: string;
@@ -44,6 +50,33 @@ export interface Submission {
   status: 'in_progress' | 'submitted' | 'graded';
   submitted_at: string | null;
   started_at?: string;
+  violation_count?: number;
+  violations?: Violation[];
+  auto_submitted?: boolean;
+}
+
+export interface Batch {
+  id: string;
+  name: string;
+  description: string | null;
+  created_at: string;
+  student_count?: number;
+}
+
+export interface BatchStudent {
+  id: string;
+  batch_id: string;
+  email: string;
+  name: string | null;
+  created_at: string;
+}
+
+export interface TestBatch {
+  id: string;
+  test_id: string;
+  batch_id: string;
+  sent_at: string;
+  batch?: Batch;
 }
 
 export interface PistonExecuteResult {

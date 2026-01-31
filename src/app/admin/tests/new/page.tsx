@@ -3,9 +3,11 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import ThemeToggle from '@/components/ThemeToggle';
+import Toast, { useToast } from '@/components/Toast';
 
 export default function CreateTestPage() {
   const router = useRouter();
+  const toast = useToast();
   const [title, setTitle] = useState('');
   const [duration, setDuration] = useState(60);
   const [isActive, setIsActive] = useState(true);
@@ -27,7 +29,7 @@ export default function CreateTestPage() {
         router.push(`/admin/tests/${test.id}`);
       } else {
         const error = await response.json();
-        alert(error.error || 'Failed to create test');
+        toast.error(error.error || 'Failed to create test');
       }
     } finally {
       setLoading(false);
@@ -36,6 +38,8 @@ export default function CreateTestPage() {
 
   return (
     <div className="min-h-screen bg-background">
+      <Toast messages={toast.toasts} onRemove={toast.removeToast} />
+
       {/* Header */}
       <header className="sticky top-0 z-20 bg-background/80 backdrop-blur-sm border-b border-border/50">
         <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">

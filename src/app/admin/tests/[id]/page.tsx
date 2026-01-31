@@ -4,11 +4,13 @@ import { useEffect, useState, use, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import QuestionForm from '@/components/admin/QuestionForm';
 import ThemeToggle from '@/components/ThemeToggle';
-import { Test, Question, MCQOption, TestCase } from '@/types';
+import Toast, { useToast } from '@/components/Toast';
+import { Test, Question, MCQOption, TestCase, Batch } from '@/types';
 
 export default function EditTestPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
+  const toast = useToast();
   const [test, setTest] = useState<Test | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
@@ -20,6 +22,12 @@ export default function EditTestPage({ params }: { params: Promise<{ id: string 
   const [title, setTitle] = useState('');
   const [duration, setDuration] = useState(60);
   const [isActive, setIsActive] = useState(true);
+
+  // Batch state
+  const [batches, setBatches] = useState<Batch[]>([]);
+  const [selectedBatches, setSelectedBatches] = useState<string[]>([]);
+  const [showBatchModal, setShowBatchModal] = useState(false);
+  const [sending, setSending] = useState(false);
 
   const fetchTestData = useCallback(async () => {
     try {
@@ -47,9 +55,22 @@ export default function EditTestPage({ params }: { params: Promise<{ id: string 
     }
   }, [id]);
 
+  const fetchBatches = useCallback(async () => {
+    try {
+      const response = await fetch('/api/admin/batches');
+      if (response.ok) {
+        const data = await response.json();
+        setBatches(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch batches:', error);
+    }
+  }, []);
+
   useEffect(() => {
     fetchTestData();
-  }, [fetchTestData]);
+    fetchBatches();
+  }, [fetchTestData, fetchBatches]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -103,6 +124,43 @@ export default function EditTestPage({ params }: { params: Promise<{ id: string 
     }
   };
 
+  const handleSendToBatches = async () => {
+    if (selectedBatches.length === 0) {
+      toast.warning('Please select at least one batch');
+      return;
+    }
+
+    setSending(true);
+    try {
+      const response = await fetch(`/api/admin/tests/${id}/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ batch_ids: selectedBatches }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        toast.success(`Test sent to ${result.sent} student(s)${result.failed > 0 ? ` (${result.failed} failed)` : ''}`);
+        setShowBatchModal(false);
+        setSelectedBatches([]);
+      } else {
+        const error = await response.json();
+        toast.error(error.error || 'Failed to send test');
+      }
+    } catch (error) {
+      console.error('Failed to send test:', error);
+      toast.error('Failed to send test');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const toggleBatch = (batchId: string) => {
+    setSelectedBatches((prev) =>
+      prev.includes(batchId) ? prev.filter((id) => id !== batchId) : [...prev, batchId]
+    );
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -121,6 +179,8 @@ export default function EditTestPage({ params }: { params: Promise<{ id: string 
 
   return (
     <div className="min-h-screen bg-background">
+      <Toast messages={toast.toasts} onRemove={toast.removeToast} />
+
       {/* Header */}
       <header className="sticky top-0 z-20 bg-background/80 backdrop-blur-sm border-b border-border/50">
         <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
@@ -156,6 +216,15 @@ export default function EditTestPage({ params }: { params: Promise<{ id: string 
                   Copy Link
                 </>
               )}
+            </button>
+            <button
+              onClick={() => setShowBatchModal(true)}
+              className="h-8 px-3 flex items-center gap-1.5 text-xs text-white dark:text-zinc-900 bg-emerald-600 hover:bg-emerald-500 dark:bg-emerald-500 dark:hover:bg-emerald-400 rounded transition-colors"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+              Send to Batches
             </button>
             <button
               onClick={() => router.push(`/admin/tests/${id}/results`)}
@@ -297,6 +366,85 @@ export default function EditTestPage({ params }: { params: Promise<{ id: string 
         onClose={() => setShowQuestionForm(false)}
         onSubmit={handleAddQuestion}
       />
+
+      {/* Send to Batches Modal */}
+      {showBatchModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowBatchModal(false)} />
+          <div className="relative w-full max-w-md bg-background border border-border/50 rounded-lg shadow-2xl">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
+              <h2 className="text-sm font-medium text-foreground">Send Test to Batches</h2>
+              <button
+                onClick={() => setShowBatchModal(false)}
+                className="w-6 h-6 flex items-center justify-center text-muted-foreground hover:text-foreground rounded transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-4">
+              {batches.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-sm text-muted-foreground mb-3">No batches created yet</p>
+                  <button
+                    onClick={() => router.push('/admin/batches')}
+                    className="text-xs text-primary hover:text-primary/80"
+                  >
+                    Create a batch first
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    Select batches to send the test invitation email to all students:
+                  </p>
+                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                    {batches.map((batch) => (
+                      <label
+                        key={batch.id}
+                        className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                          selectedBatches.includes(batch.id)
+                            ? 'bg-primary/10 border-primary/50'
+                            : 'bg-card border-border/50 hover:border-border'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedBatches.includes(batch.id)}
+                          onChange={() => toggleBatch(batch.id)}
+                          className="w-4 h-4 rounded border-border text-primary focus:ring-0 focus:ring-offset-0"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-foreground">{batch.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {batch.student_count || 0} student{(batch.student_count || 0) !== 1 ? 's' : ''}
+                          </p>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                  <div className="flex gap-2 mt-4">
+                    <button
+                      onClick={() => setShowBatchModal(false)}
+                      className="flex-1 h-9 text-xs text-muted-foreground hover:text-foreground bg-secondary/50 hover:bg-secondary rounded transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSendToBatches}
+                      disabled={sending || selectedBatches.length === 0}
+                      className="flex-1 h-9 text-xs font-medium bg-emerald-600 hover:bg-emerald-500 dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white dark:text-zinc-900 rounded transition-colors disabled:bg-muted disabled:text-muted-foreground"
+                    >
+                      {sending ? 'Sending...' : `Send to ${selectedBatches.length} batch${selectedBatches.length !== 1 ? 'es' : ''}`}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

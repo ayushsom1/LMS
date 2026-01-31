@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, use, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Test } from '@/types';
 import { formatDuration } from '@/lib/utils';
 import ThemeToggle from '@/components/ThemeToggle';
@@ -9,12 +9,25 @@ import ThemeToggle from '@/components/ThemeToggle';
 export default function TestEntryPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = use(params);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const emailFromUrl = searchParams.get('email');
+
   const [test, setTest] = useState<Test | null>(null);
   const [loading, setLoading] = useState(true);
   const [studentName, setStudentName] = useState('');
-  const [studentEmail, setStudentEmail] = useState('');
+  const [studentEmail, setStudentEmail] = useState(emailFromUrl || '');
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState('');
+
+  // Pre-fill email from URL parameter
+  const isEmailPreFilled = !!emailFromUrl;
+
+  // Update email if URL param changes
+  useEffect(() => {
+    if (emailFromUrl) {
+      setStudentEmail(emailFromUrl);
+    }
+  }, [emailFromUrl]);
 
   const fetchTest = useCallback(async () => {
     try {
@@ -164,15 +177,28 @@ export default function TestEntryPage({ params }: { params: Promise<{ code: stri
             <div>
               <label className="block text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5 font-medium">
                 Email
+                {isEmailPreFilled && (
+                  <span className="ml-2 text-emerald-600 dark:text-emerald-400 normal-case">(verified)</span>
+                )}
               </label>
               <input
                 type="email"
                 value={studentEmail}
-                onChange={(e) => setStudentEmail(e.target.value)}
-                className="w-full h-10 px-3 bg-card border border-border rounded text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all"
+                onChange={(e) => !isEmailPreFilled && setStudentEmail(e.target.value)}
+                readOnly={isEmailPreFilled}
+                className={`w-full h-10 px-3 border rounded text-sm text-foreground placeholder:text-muted-foreground focus:outline-none transition-all ${
+                  isEmailPreFilled
+                    ? 'bg-secondary/50 border-emerald-500/30 cursor-not-allowed'
+                    : 'bg-card border-border focus:border-primary/50 focus:ring-1 focus:ring-primary/20'
+                }`}
                 placeholder="john@example.com"
                 required
               />
+              {isEmailPreFilled && (
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  Email pre-filled from your invitation link
+                </p>
+              )}
             </div>
 
             {/* Instructions */}

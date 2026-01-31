@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { MCQOption, TestCase } from '@/types';
+import Toast, { useToast } from '@/components/Toast';
 
 interface QuestionFormProps {
   open: boolean;
@@ -19,6 +20,7 @@ interface QuestionFormProps {
 }
 
 export default function QuestionForm({ open, onClose, onSubmit }: QuestionFormProps) {
+  const toast = useToast();
   const [type, setType] = useState<'mcq' | 'coding'>('mcq');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -47,11 +49,11 @@ export default function QuestionForm({ open, onClose, onSubmit }: QuestionFormPr
       if (type === 'mcq') {
         const validOptions = options.filter(o => o.text.trim());
         if (validOptions.length < 2) {
-          alert('Please provide at least 2 options');
+          toast.warning('Please provide at least 2 options');
           return;
         }
         if (!correctAnswer) {
-          alert('Please select the correct answer');
+          toast.warning('Please select the correct answer');
           return;
         }
         await onSubmit({
@@ -65,7 +67,7 @@ export default function QuestionForm({ open, onClose, onSubmit }: QuestionFormPr
       } else {
         const validTestCases = testCases.filter(tc => tc.input.trim() || tc.expected_output.trim());
         if (validTestCases.length < 1) {
-          alert('Please provide at least 1 test case');
+          toast.warning('Please provide at least 1 test case');
           return;
         }
         await onSubmit({
@@ -128,6 +130,8 @@ export default function QuestionForm({ open, onClose, onSubmit }: QuestionFormPr
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <Toast messages={toast.toasts} onRemove={toast.removeToast} />
+
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
