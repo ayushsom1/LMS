@@ -3,7 +3,16 @@
 import { useEffect, useState, useCallback, use } from 'react';
 import { useRouter } from 'next/navigation';
 import CodeEditor from '@/components/CodeEditor';
-import { Test, Question } from '@/types';
+import { Test, Question, TestCase } from '@/types';
+
+interface RunResult {
+  id: string;
+  input: string;
+  expected: string;
+  actual: string | null;
+  passed: boolean;
+  error: string | null;
+}
 
 export default function TakeTestPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = use(params);
@@ -18,6 +27,10 @@ export default function TakeTestPage({ params }: { params: Promise<{ code: strin
   const [startTime, setStartTime] = useState<number>(0);
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [result, setResult] = useState<{ mcq_score: number; coding_score: number; total_score: number } | null>(null);
+
+  // Run code state
+  const [running, setRunning] = useState(false);
+  const [runResults, setRunResults] = useState<Record<string, RunResult[]>>({});
 
   const fetchTestData = useCallback(async () => {
     try {
@@ -97,8 +110,51 @@ export default function TakeTestPage({ params }: { params: Promise<{ code: strin
     }
   }, [code, answers, submitting, submitted]);
 
+  const handleRunCode = async (questionId: string, testCases: TestCase[]) => {
+    const studentCode = answers[questionId];
+    if (!studentCode) {
+      alert('Please write some code first');
+      return;
+    }
+
+    setRunning(true);
+    // Clear previous results for this question
+    setRunResults((prev) => ({ ...prev, [questionId]: [] }));
+
+    try {
+      // Only run against visible test cases
+      const visibleTestCases = testCases.filter((tc) => !tc.is_hidden);
+
+      const response = await fetch('/api/test/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: studentCode,
+          testCases: visibleTestCases,
+          language: 'cpp',
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setRunResults((prev) => ({ ...prev, [questionId]: data.results }));
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to run code');
+      }
+    } catch {
+      alert('Failed to run code');
+    } finally {
+      setRunning(false);
+    }
+  };
+
   const handleAnswerChange = (questionId: string, answer: string) => {
     setAnswers((prev) => ({ ...prev, [questionId]: answer }));
+    // Clear run results when code changes
+    if (runResults[questionId]) {
+      setRunResults((prev) => ({ ...prev, [questionId]: [] }));
+    }
   };
 
   const formatTime = (ms: number) => {
@@ -166,6 +222,7 @@ export default function TakeTestPage({ params }: { params: Promise<{ code: strin
   const currentQuestion = questions[currentIndex];
   const isLowTime = timeLeft < 5 * 60 * 1000; // Less than 5 minutes
   const isCriticalTime = timeLeft < 60 * 1000; // Less than 1 minute
+  const currentRunResults = runResults[currentQuestion.id] || [];
 
   return (
     <div className="h-screen bg-background flex flex-col overflow-hidden">
@@ -267,34 +324,134 @@ export default function TakeTestPage({ params }: { params: Promise<{ code: strin
                 <div className="space-y-2">
                   <p className="text-xs text-muted-foreground uppercase tracking-wider">Sample Test Cases</p>
                   <div className="grid gap-2">
-                    {currentQuestion.test_cases.filter(tc => !tc.is_hidden).map((tc, i) => (
-                      <div key={tc.id} className="grid grid-cols-2 gap-3 p-3 bg-card border border-border/50 rounded-lg">
-                        <div>
-                          <p className="text-[10px] text-muted-foreground mb-1">Input {i + 1}</p>
-                          <pre className="text-xs text-foreground font-mono bg-secondary/50 p-2 rounded overflow-x-auto">
-                            {tc.input || '(empty)'}
-                          </pre>
+                    {currentQuestion.test_cases.filter(tc => !tc.is_hidden).map((tc, i) => {
+                      const runResult = currentRunResults.find((r) => r.id === tc.id);
+                      return (
+                        <div
+                          key={tc.id}
+                          className={`p-3 border rounded-lg transition-all ${
+                            runResult
+                              ? runResult.passed
+                                ? 'bg-emerald-500/10 border-emerald-500/30'
+                                : 'bg-destructive/10 border-destructive/30'
+                              : 'bg-card border-border/50'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs text-muted-foreground">Test Case {i + 1}</span>
+                            {runResult && (
+                              <span className={`text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded font-medium ${
+                                runResult.passed
+                                  ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400'
+                                  : 'bg-destructive/20 text-destructive'
+                              }`}>
+                                {runResult.passed ? 'Passed' : 'Failed'}
+                              </span>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <p className="text-[10px] text-muted-foreground mb-1">Input</p>
+                              <pre className="text-xs text-foreground font-mono bg-secondary/50 p-2 rounded overflow-x-auto">
+                                {tc.input || '(empty)'}
+                              </pre>
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-muted-foreground mb-1">Expected Output</p>
+                              <pre className="text-xs text-foreground font-mono bg-secondary/50 p-2 rounded overflow-x-auto">
+                                {tc.expected_output}
+                              </pre>
+                            </div>
+                          </div>
+                          {/* Show actual output if run */}
+                          {runResult && !runResult.passed && (
+                            <div className="mt-2 pt-2 border-t border-border/50">
+                              {runResult.error ? (
+                                <div>
+                                  <p className="text-[10px] text-destructive mb-1">Error</p>
+                                  <pre className="text-xs text-destructive font-mono bg-destructive/10 p-2 rounded overflow-x-auto whitespace-pre-wrap">
+                                    {runResult.error}
+                                  </pre>
+                                </div>
+                              ) : (
+                                <div>
+                                  <p className="text-[10px] text-muted-foreground mb-1">Your Output</p>
+                                  <pre className="text-xs text-foreground font-mono bg-secondary/50 p-2 rounded overflow-x-auto">
+                                    {runResult.actual || '(empty)'}
+                                  </pre>
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
-                        <div>
-                          <p className="text-[10px] text-muted-foreground mb-1">Output</p>
-                          <pre className="text-xs text-foreground font-mono bg-secondary/50 p-2 rounded overflow-x-auto">
-                            {tc.expected_output}
-                          </pre>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
 
+              {/* Code Editor with Run button */}
               <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Your Solution (C++)</p>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider">Your Solution (C++)</p>
+                  <button
+                    onClick={() => handleRunCode(currentQuestion.id, currentQuestion.test_cases || [])}
+                    disabled={running || !answers[currentQuestion.id]}
+                    className="h-7 px-3 bg-purple-600 hover:bg-purple-500 dark:bg-purple-500 dark:hover:bg-purple-400 disabled:bg-muted disabled:text-muted-foreground text-white dark:text-zinc-900 text-xs font-medium rounded transition-colors flex items-center gap-1.5"
+                  >
+                    {running ? (
+                      <>
+                        <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                        Running...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Run Code
+                      </>
+                    )}
+                  </button>
+                </div>
                 <CodeEditor
                   value={answers[currentQuestion.id] || '#include <iostream>\nusing namespace std;\n\nint main() {\n    // Your code here\n    \n    return 0;\n}'}
                   onChange={(code) => handleAnswerChange(currentQuestion.id, code)}
                   height="350px"
                 />
               </div>
+
+              {/* Run Results Summary */}
+              {currentRunResults.length > 0 && (
+                <div className={`p-3 rounded-lg border ${
+                  currentRunResults.every(r => r.passed)
+                    ? 'bg-emerald-500/10 border-emerald-500/30'
+                    : 'bg-amber-500/10 border-amber-500/30'
+                }`}>
+                  <div className="flex items-center gap-2">
+                    {currentRunResults.every(r => r.passed) ? (
+                      <svg className="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    ) : (
+                      <svg className="w-4 h-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                    )}
+                    <span className={`text-sm font-medium ${
+                      currentRunResults.every(r => r.passed) ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'
+                    }`}>
+                      {currentRunResults.filter(r => r.passed).length}/{currentRunResults.length} test cases passed
+                    </span>
+                  </div>
+                  {currentRunResults.every(r => r.passed) && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Note: There may be hidden test cases that will be evaluated on submission.
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
-import { evaluateCode } from '@/lib/judge0';
+import { evaluateCode } from '@/lib/piston';
 import { Question, TestCase } from '@/types';
 
 export async function POST(

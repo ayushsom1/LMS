@@ -46,24 +46,11 @@ export interface Submission {
   started_at?: string;
 }
 
-export interface Judge0Submission {
-  source_code: string;
-  language_id: number;
-  stdin: string;
-  expected_output: string;
-}
-
-export interface Judge0Result {
-  token: string;
-  status: {
-    id: number;
-    description: string;
-  };
-  stdout: string | null;
-  stderr: string | null;
-  compile_output: string | null;
-  time: string | null;
-  memory: number | null;
+export interface PistonExecuteResult {
+  output: string;
+  error: string;
+  exitCode: number;
+  compileError?: string;
 }
 
 export interface TestCaseResult {
