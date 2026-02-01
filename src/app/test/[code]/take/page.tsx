@@ -101,13 +101,11 @@ export default function TakeTestPage({ params }: { params: Promise<{ code: strin
         setIsFullscreen(true);
       }
     } catch (error) {
-      console.error('Failed to enter fullscreen:', error);
-      // Only show warning if not submitted
-      if (!submitted && !submitting) {
-        toast.warning('Please allow fullscreen mode for the test');
-      }
+      // Fullscreen request failed - likely due to missing user gesture
+      // The overlay will prompt user to click "Enter Fullscreen" button
+      console.log('Fullscreen requires user gesture');
     }
-  }, [toast, submitted, submitting]);
+  }, [submitted, submitting]);
 
   // Initial setup
   useEffect(() => {
@@ -143,12 +141,10 @@ export default function TakeTestPage({ params }: { params: Promise<{ code: strin
       const isNowFullscreen = document.fullscreenElement !== null;
       setIsFullscreen(isNowFullscreen);
 
-      if (!isNowFullscreen) {
+      if (!isNowFullscreen && !submitted && !submitting) {
         reportViolation('fullscreen_exit', 'Attempted to exit fullscreen mode');
-        // Try to re-enter fullscreen after a short delay
-        setTimeout(() => {
-          enterFullscreen();
-        }, 100);
+        // Don't auto re-enter - browsers require user gesture
+        // The fullscreen overlay will prompt user to click "Enter Fullscreen"
       }
     };
 
