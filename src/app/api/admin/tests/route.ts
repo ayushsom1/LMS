@@ -4,34 +4,25 @@ import { generateAccessCode } from '@/lib/utils';
 
 export async function GET() {
   try {
+    // Single query with embedded counts — eliminates the previous N+1 pattern
+    // where each test triggered 2 extra DB round-trips (questions + submissions count)
     const { data: tests, error } = await supabaseAdmin
       .from('tests')
-      .select('*')
+      .select(`
+        *,
+        question_count:questions(count),
+        submission_count:submissions(count)
+      `)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
 
-    // Get question and submission counts for each test
-    const testsWithStats = await Promise.all(
-      tests.map(async (test) => {
-        const [questionsResult, submissionsResult] = await Promise.all([
-          supabaseAdmin
-            .from('questions')
-            .select('id', { count: 'exact', head: true })
-            .eq('test_id', test.id),
-          supabaseAdmin
-            .from('submissions')
-            .select('id', { count: 'exact', head: true })
-            .eq('test_id', test.id),
-        ]);
-
-        return {
-          ...test,
-          question_count: questionsResult.count || 0,
-          submission_count: submissionsResult.count || 0,
-        };
-      })
-    );
+    // Flatten the nested count arrays returned by Supabase
+    const testsWithStats = tests.map((test) => ({
+      ...test,
+      question_count: (test.question_count as unknown as { count: number }[])?.[0]?.count ?? 0,
+      submission_count: (test.submission_count as unknown as { count: number }[])?.[0]?.count ?? 0,
+    }));
 
     return NextResponse.json(testsWithStats);
   } catch (error) {

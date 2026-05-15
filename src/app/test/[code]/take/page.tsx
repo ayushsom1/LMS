@@ -176,6 +176,32 @@ export default function TakeTestPage({ params }: { params: Promise<{ code: strin
     return () => window.removeEventListener('blur', handleBlur);
   }, [submitted, submitting, reportViolation]);
 
+  // Auto-save answers every 30 seconds
+  useEffect(() => {
+    if (submitted || submitting) return;
+
+    const autoSave = async () => {
+      const submissionId = sessionStorage.getItem(`test_${code}_submission`);
+      if (!submissionId || Object.keys(answers).length === 0) return;
+
+      try {
+        await fetch(`/api/test/${code}/save`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ submissionId, answers }),
+        });
+      } catch {
+        // Silent fail — auto-save is best-effort
+      }
+    };
+
+    // Jitter: 25–35s random interval to avoid thundering herd when 2000 students all
+    // start at the same time and would otherwise auto-save simultaneously every 30s.
+    const jitteredInterval = 25000 + Math.random() * 10000;
+    const interval = setInterval(autoSave, jitteredInterval);
+    return () => clearInterval(interval);
+  }, [code, answers, submitted, submitting]);
+
   // Keyboard shortcut prevention
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -487,19 +513,23 @@ export default function TakeTestPage({ params }: { params: Promise<{ code: strin
           {/* MCQ Options */}
           {currentQuestion.type === 'mcq' && currentQuestion.options && (
             <div className="space-y-2">
-              {currentQuestion.options.map((option) => (
-                <button
-                  key={option.id}
-                  onClick={() => handleAnswerChange(currentQuestion.id, option.id)}
-                  className={`w-full text-left p-3 rounded-lg border transition-all ${
-                    answers[currentQuestion.id] === option.id
-                      ? 'bg-primary/10 border-primary/50 text-foreground'
-                      : 'bg-card border-border/50 text-foreground hover:border-border'
-                  }`}
-                >
-                  <span className="text-sm">{option.text}</span>
-                </button>
-              ))}
+              {currentQuestion.options.map((option, idx) => {
+                // Support both {id, text} objects and plain strings
+                const optionId = typeof option === 'string' ? option : option.id;
+                const optionText = typeof option === 'string' ? option : option.text;
+                return (
+                  <button key={optionId || idx}
+                    onClick={() => handleAnswerChange(currentQuestion.id, optionId)}
+                    className={`w-full text-left p-3 rounded-lg border transition-all ${
+                      answers[currentQuestion.id] === optionId
+                        ? 'bg-primary/10 border-primary/50 text-foreground'
+                        : 'bg-card border-border/50 text-foreground hover:border-border'
+                    }`}
+                  >
+                    <span className="text-sm">{optionText}</span>
+                  </button>
+                );
+              })}
             </div>
           )}
 

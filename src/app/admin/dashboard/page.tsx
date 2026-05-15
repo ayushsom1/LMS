@@ -36,8 +36,8 @@ export default function AdminDashboard() {
   };
 
   const handleLogout = async () => {
-    await fetch('/api/admin/login', { method: 'DELETE' });
-    router.push('/admin');
+    await fetch('/api/auth/logout', { method: 'DELETE' });
+    router.push('/login');
   };
 
   const copyAccessLink = async (code: string, id: string) => {

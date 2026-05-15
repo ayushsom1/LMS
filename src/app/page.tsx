@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import ThemeToggle from '@/components/ThemeToggle';
 
@@ -9,6 +9,14 @@ export default function Home() {
   const [accessCode, setAccessCode] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [session, setSession] = useState<{ role: 'admin' | 'student' } | null>(null);
+
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => setSession(data?.user || null))
+      .catch(() => setSession(null));
+  }, []);
 
   const handleJoinTest = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,12 +55,30 @@ export default function Home() {
         </div>
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          <button
-            onClick={() => router.push('/admin')}
-            className="text-xs text-muted-foreground hover:text-primary transition-colors font-mono"
-          >
-            admin →
-          </button>
+          {session?.role === 'student' && (
+            <button
+              onClick={() => router.push('/student/dashboard')}
+              className="text-xs text-muted-foreground hover:text-primary transition-colors font-mono"
+            >
+              my tests →
+            </button>
+          )}
+          {session?.role === 'admin' && (
+            <button
+              onClick={() => router.push('/admin/dashboard')}
+              className="text-xs text-muted-foreground hover:text-primary transition-colors font-mono"
+            >
+              dashboard →
+            </button>
+          )}
+          {!session && (
+            <button
+              onClick={() => router.push('/login')}
+              className="text-xs text-muted-foreground hover:text-primary transition-colors font-mono"
+            >
+              sign in →
+            </button>
+          )}
         </div>
       </header>
 

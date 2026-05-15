@@ -17,10 +17,11 @@ export async function POST(
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // Get current submission
+    // Get current submission — select only columns needed for violation logic
+    // Avoid fetching large answers JSONB which is not needed here
     const { data: submission, error: getError } = await supabaseAdmin
       .from('submissions')
-      .select('*')
+      .select('id, status, violations, violation_count')
       .eq('id', submissionId)
       .single();
 

@@ -14,63 +14,58 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Test cases are required' }, { status: 400 });
     }
 
-    const results = [];
-
-    for (const testCase of testCases) {
+    // Run all test cases in parallel
+    const resultPromises = testCases.map(async (testCase: { id: string; input: string; expected_output: string }) => {
       try {
         const result = await executeCode(code, testCase.input || '', language as Language);
 
-        // Check for compilation error
         if (result.compileError) {
-          results.push({
+          return {
             id: testCase.id,
             input: testCase.input,
             expected: testCase.expected_output,
             actual: null,
             passed: false,
             error: `Compilation Error: ${result.compileError}`,
-          });
-          continue;
+          };
         }
 
-        // Check for runtime error
         if (result.exitCode !== 0 || result.error) {
-          results.push({
+          return {
             id: testCase.id,
             input: testCase.input,
             expected: testCase.expected_output,
             actual: result.output || null,
             passed: false,
             error: result.error || `Runtime Error (exit code: ${result.exitCode})`,
-          });
-          continue;
+          };
         }
 
-        // Compare output
         const actualOutput = result.output.trim();
         const expectedOutput = testCase.expected_output.trim();
         const passed = actualOutput === expectedOutput;
 
-        results.push({
+        return {
           id: testCase.id,
           input: testCase.input,
           expected: testCase.expected_output,
           actual: actualOutput,
           passed,
           error: null,
-        });
+        };
       } catch (error) {
-        results.push({
+        return {
           id: testCase.id,
           input: testCase.input,
           expected: testCase.expected_output,
           actual: null,
           passed: false,
           error: error instanceof Error ? error.message : 'Execution failed',
-        });
+        };
       }
-    }
+    });
 
+    const results = await Promise.all(resultPromises);
     const passedCount = results.filter((r) => r.passed).length;
 
     return NextResponse.json({

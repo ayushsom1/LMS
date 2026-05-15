@@ -55,43 +55,52 @@ export async function POST(
     const uniqueEmails = [...new Set(students.map((s: { email: string }) => s.email))];
     const baseUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/test/${test.access_code}`;
 
-    // Send emails
+    // Send emails in parallel batches of 10
     let sentCount = 0;
     let failedCount = 0;
+    const BATCH_SIZE = 10;
 
-    for (const email of uniqueEmails) {
-      // Include email in the URL so it's pre-filled for the student
-      const personalizedUrl = `${baseUrl}?email=${encodeURIComponent(email)}`;
+    for (let i = 0; i < uniqueEmails.length; i += BATCH_SIZE) {
+      const batch = uniqueEmails.slice(i, i + BATCH_SIZE);
 
-      try {
-        await resend.emails.send({
-          from: 'Test Platform <onboarding@resend.dev>',
-          to: email,
-          subject: `Test Invitation: ${test.title}`,
-          html: `
-            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-              <h2>You've been invited to take a test</h2>
-              <p><strong>Test:</strong> ${test.title}</p>
-              <p><strong>Duration:</strong> ${test.duration_minutes} minutes</p>
-              <p style="margin: 20px 0;">
-                <a href="${personalizedUrl}" style="background: #0891b2; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-                  Start Test
-                </a>
-              </p>
-              <p style="color: #666; font-size: 14px;">
-                This link is personalized for ${email}
-              </p>
-              <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
-              <p style="color: #999; font-size: 12px;">
-                Important: You can only take this test once. Make sure you have a stable internet connection before starting.
-              </p>
-            </div>
-          `,
-        });
-        sentCount++;
-      } catch (emailError) {
-        console.error(`Failed to send email to ${email}:`, emailError);
-        failedCount++;
+      const results = await Promise.allSettled(
+        batch.map(async (email) => {
+          const personalizedUrl = `${baseUrl}?email=${encodeURIComponent(email)}`;
+
+          await resend.emails.send({
+            from: 'Test Platform <onboarding@resend.dev>',
+            to: email,
+            subject: `Test Invitation: ${test.title}`,
+            html: `
+              <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2>You've been invited to take a test</h2>
+                <p><strong>Test:</strong> ${test.title}</p>
+                <p><strong>Duration:</strong> ${test.duration_minutes} minutes</p>
+                <p style="margin: 20px 0;">
+                  <a href="${personalizedUrl}" style="background: #0891b2; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+                    Start Test
+                  </a>
+                </p>
+                <p style="color: #666; font-size: 14px;">
+                  This link is personalized for ${email}
+                </p>
+                <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+                <p style="color: #999; font-size: 12px;">
+                  Important: You can only take this test once. Make sure you have a stable internet connection before starting.
+                </p>
+              </div>
+            `,
+          });
+        })
+      );
+
+      for (const result of results) {
+        if (result.status === 'fulfilled') {
+          sentCount++;
+        } else {
+          console.error('Failed to send email:', result.reason);
+          failedCount++;
+        }
       }
     }
 

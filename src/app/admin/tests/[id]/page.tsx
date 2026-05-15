@@ -15,6 +15,7 @@ export default function EditTestPage({ params }: { params: Promise<{ id: string 
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [showQuestionForm, setShowQuestionForm] = useState(false);
+  const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -89,7 +90,7 @@ export default function EditTestPage({ params }: { params: Promise<{ id: string 
     }
   };
 
-  const handleAddQuestion = async (questionData: {
+  const handleQuestionSubmit = async (questionData: {
     type: 'mcq' | 'coding';
     title: string;
     description: string;
@@ -98,14 +99,28 @@ export default function EditTestPage({ params }: { params: Promise<{ id: string 
     test_cases?: TestCase[];
     points: number;
   }) => {
-    const response = await fetch(`/api/admin/tests/${id}/questions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...questionData, order_index: questions.length }),
-    });
-    if (response.ok) {
-      fetchTestData();
+    if (editingQuestion) {
+      // Update existing question
+      const response = await fetch(`/api/admin/tests/${id}/questions/${editingQuestion.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...questionData, order_index: editingQuestion.order_index }),
+      });
+      if (response.ok) {
+        fetchTestData();
+      }
+    } else {
+      // Create new question
+      const response = await fetch(`/api/admin/tests/${id}/questions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...questionData, order_index: questions.length }),
+      });
+      if (response.ok) {
+        fetchTestData();
+      }
     }
+    setEditingQuestion(null);
   };
 
   const handleDeleteQuestion = async (questionId: string) => {
@@ -345,14 +360,29 @@ export default function EditTestPage({ params }: { params: Promise<{ id: string 
                         <p className="text-xs text-muted-foreground truncate mt-0.5">{q.description}</p>
                       )}
                     </div>
-                    <button
-                      onClick={() => handleDeleteQuestion(q.id)}
-                      className="flex-shrink-0 opacity-0 group-hover:opacity-100 w-7 h-7 flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-all"
-                    >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
+                    <div className="flex-shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                      <button
+                        onClick={() => {
+                          setEditingQuestion(q);
+                          setShowQuestionForm(true);
+                        }}
+                        className="w-7 h-7 flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 rounded transition-colors"
+                        title="Edit question"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => handleDeleteQuestion(q.id)}
+                        className="w-7 h-7 flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-colors"
+                        title="Delete question"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -363,8 +393,12 @@ export default function EditTestPage({ params }: { params: Promise<{ id: string 
 
       <QuestionForm
         open={showQuestionForm}
-        onClose={() => setShowQuestionForm(false)}
-        onSubmit={handleAddQuestion}
+        onClose={() => {
+          setShowQuestionForm(false);
+          setEditingQuestion(null);
+        }}
+        onSubmit={handleQuestionSubmit}
+        initialQuestion={editingQuestion}
       />
 
       {/* Send to Batches Modal */}

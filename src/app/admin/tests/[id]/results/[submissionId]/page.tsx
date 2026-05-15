@@ -261,13 +261,19 @@ export default function SubmissionDetailPage({
                   {/* MCQ Options */}
                   {isMCQ && question.options && (
                     <div className="space-y-1.5 mt-3">
-                      {question.options.map((option: MCQOption) => {
-                        const isSelected = answer === option.id;
-                        const isCorrectOption = option.id === question.correct_answer;
+                      {question.options.map((rawOption: MCQOption | string, optionIndex: number) => {
+                        const option: MCQOption =
+                          typeof rawOption === 'string'
+                            ? { id: rawOption, text: rawOption }
+                            : { id: rawOption.id ?? String(optionIndex), text: rawOption.text };
+
+                        const isSelected = answer != null && answer === option.id;
+                        const isCorrectOption =
+                          question.correct_answer != null && option.id === question.correct_answer;
 
                         return (
                           <div
-                            key={option.id}
+                            key={`${question.id}-${option.id}-${optionIndex}`}
                             className={`flex items-center gap-2 p-2 rounded text-sm ${
                               isCorrectOption
                                 ? 'bg-emerald-500/10 border border-emerald-500/30'
@@ -336,7 +342,7 @@ export default function SubmissionDetailPage({
                           <div className="grid gap-2">
                             {question.test_cases.map((tc: TestCase, i: number) => (
                               <div
-                                key={tc.id}
+                                key={tc.id ?? `${question.id}-tc-${i}`}
                                 className="p-2 bg-secondary/50 border border-border/50 rounded text-xs"
                               >
                                 <div className="flex items-center justify-between mb-1">

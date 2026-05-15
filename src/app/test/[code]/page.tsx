@@ -18,16 +18,40 @@ export default function TestEntryPage({ params }: { params: Promise<{ code: stri
   const [studentEmail, setStudentEmail] = useState(emailFromUrl || '');
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState('');
+  const [errorCode, setErrorCode] = useState('');
+  const [loggedIn, setLoggedIn] = useState(false);
+  const [autoStarting, setAutoStarting] = useState(false);
 
   // Pre-fill email from URL parameter
-  const isEmailPreFilled = !!emailFromUrl;
+  const isEmailPreFilled = !!emailFromUrl || loggedIn;
+
+  // Check if student is logged in
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then((res) => {
+        if (res.ok) return res.json();
+        throw new Error('Not logged in');
+      })
+      .then((data) => {
+        if (data.user?.role !== 'student') throw new Error('Not a student');
+        setStudentName(data.user.name);
+        setStudentEmail(data.user.email);
+        setLoggedIn(true);
+      })
+      .catch(() => {
+        // Not logged in — use URL param if available
+        if (emailFromUrl) {
+          setStudentEmail(emailFromUrl);
+        }
+      });
+  }, [emailFromUrl]);
 
   // Update email if URL param changes
   useEffect(() => {
-    if (emailFromUrl) {
+    if (emailFromUrl && !loggedIn) {
       setStudentEmail(emailFromUrl);
     }
-  }, [emailFromUrl]);
+  }, [emailFromUrl, loggedIn]);
 
   const fetchTest = useCallback(async () => {
     try {
@@ -49,44 +73,75 @@ export default function TestEntryPage({ params }: { params: Promise<{ code: stri
     fetchTest();
   }, [fetchTest]);
 
+  const startTest = useCallback(async (name: string, email: string) => {
+    setStarting(true);
+    setError('');
+    setErrorCode('');
+
+    try {
+      const response = await fetch(`/api/test/${code}/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ student_name: name, student_email: email }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        sessionStorage.setItem(`test_${code}_submission`, data.submissionId);
+        sessionStorage.setItem(`test_${code}_name`, name);
+        const serverStart = data.started_at
+          ? new Date(data.started_at).getTime()
+          : Date.now();
+        sessionStorage.setItem(`test_${code}_start`, serverStart.toString());
+        if (data.duration_minutes) {
+          sessionStorage.setItem(`test_${code}_duration`, data.duration_minutes.toString());
+        }
+        router.push(`/test/${code}/take`);
+      } else {
+        const data = await response.json();
+        setError(data.error || 'Failed to start');
+        setErrorCode(data.code || '');
+        setAutoStarting(false);
+      }
+    } catch {
+      setError('Connection failed');
+      setAutoStarting(false);
+    } finally {
+      setStarting(false);
+    }
+  }, [code, router]);
+
+  // Auto-start test if logged in and test is loaded
+  useEffect(() => {
+    if (loggedIn && test && test.is_active && !autoStarting && !starting && !error) {
+      setAutoStarting(true);
+      startTest(studentName, studentEmail);
+    }
+  }, [loggedIn, test, autoStarting, starting, error, studentName, studentEmail, startTest]);
+
   const handleStart = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!studentName.trim() || !studentEmail.trim()) {
       setError('Please fill in all fields');
       return;
     }
-
-    setStarting(true);
-    setError('');
-
-    try {
-      const response = await fetch(`/api/test/${code}/start`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ student_name: studentName, student_email: studentEmail }),
-      });
-
-      if (response.ok) {
-        const { submissionId } = await response.json();
-        sessionStorage.setItem(`test_${code}_submission`, submissionId);
-        sessionStorage.setItem(`test_${code}_name`, studentName);
-        sessionStorage.setItem(`test_${code}_start`, Date.now().toString());
-        router.push(`/test/${code}/take`);
-      } else {
-        const data = await response.json();
-        setError(data.error || 'Failed to start');
-      }
-    } catch {
-      setError('Connection failed');
-    } finally {
-      setStarting(false);
-    }
+    startTest(studentName.trim(), studentEmail.trim());
   };
 
-  if (loading) {
+  if (loading || (loggedIn && !error && !autoStarting)) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="w-5 h-5 border-2 border-border border-t-primary rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  // Auto-starting for logged-in users
+  if (autoStarting && !error) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4">
+        <div className="w-5 h-5 border-2 border-border border-t-primary rounded-full animate-spin mb-4" />
+        <p className="text-sm text-muted-foreground">Starting test...</p>
       </div>
     );
   }
@@ -129,6 +184,7 @@ export default function TestEntryPage({ params }: { params: Promise<{ code: stri
     );
   }
 
+  // Show form for non-logged-in users (or logged-in users who hit an error like "already taken")
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <div className="fixed inset-0 grid-pattern pointer-events-none" />
@@ -168,8 +224,13 @@ export default function TestEntryPage({ params }: { params: Promise<{ code: stri
               <input
                 type="text"
                 value={studentName}
-                onChange={(e) => setStudentName(e.target.value)}
-                className="w-full h-10 px-3 bg-card border border-border rounded text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all"
+                onChange={(e) => !loggedIn && setStudentName(e.target.value)}
+                readOnly={loggedIn}
+                className={`w-full h-10 px-3 border rounded text-sm text-foreground placeholder:text-muted-foreground focus:outline-none transition-all ${
+                  loggedIn
+                    ? 'bg-secondary/50 border-emerald-500/30 cursor-not-allowed'
+                    : 'bg-card border-border focus:border-primary/50 focus:ring-1 focus:ring-primary/20'
+                }`}
                 placeholder="John Doe"
                 required
               />
@@ -194,11 +255,6 @@ export default function TestEntryPage({ params }: { params: Promise<{ code: stri
                 placeholder="john@example.com"
                 required
               />
-              {isEmailPreFilled && (
-                <p className="text-[10px] text-muted-foreground mt-1">
-                  Email pre-filled from your invitation link
-                </p>
-              )}
             </div>
 
             {/* Instructions */}
@@ -209,7 +265,18 @@ export default function TestEntryPage({ params }: { params: Promise<{ code: stri
             </div>
 
             {error && (
-              <p className="text-xs text-destructive font-medium">{error}</p>
+              <div className="space-y-2">
+                <p className="text-xs text-destructive font-medium">{error}</p>
+                {errorCode === 'NOT_REGISTERED' && (
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/login?mode=register&next=${encodeURIComponent(`/test/${code}`)}`)}
+                    className="text-xs text-primary hover:text-primary/80 underline"
+                  >
+                    Register or sign in →
+                  </button>
+                )}
+              </div>
             )}
 
             <button

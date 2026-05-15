@@ -37,21 +37,21 @@ export default function TestResultsPage({ params }: { params: Promise<{ id: stri
         setSubmissions(await submissionsRes.json());
       }
 
-      // Get batches linked to this test
+      // Get batches linked to this test — fetch all batch details in parallel
       if (testBatchesRes.ok) {
         const testBatches = await testBatchesRes.json();
-        const batchIds = testBatches.map((tb: { batch_id: string }) => tb.batch_id);
+        const batchIds: string[] = testBatches.map((tb: { batch_id: string }) => tb.batch_id);
 
-        // Fetch batch details with students
-        const batchesWithStudents: BatchWithStudents[] = [];
-        for (const batchId of batchIds) {
-          const batchRes = await fetch(`/api/admin/batches/${batchId}`);
-          if (batchRes.ok) {
+        // Parallel fetch for all batches instead of serial for loop
+        const batchResults = await Promise.all(
+          batchIds.map(async (batchId) => {
+            const batchRes = await fetch(`/api/admin/batches/${batchId}`);
+            if (!batchRes.ok) return null;
             const data = await batchRes.json();
-            batchesWithStudents.push({ ...data.batch, students: data.students });
-          }
-        }
-        setBatches(batchesWithStudents);
+            return { ...data.batch, students: data.students } as BatchWithStudents;
+          })
+        );
+        setBatches(batchResults.filter((b): b is BatchWithStudents => b !== null));
       }
     } catch (error) {
       console.error('Failed to fetch data:', error);

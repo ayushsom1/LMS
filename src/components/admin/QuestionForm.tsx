@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { MCQOption, TestCase } from '@/types';
+import { MCQOption, TestCase, Question } from '@/types';
 import Toast, { useToast } from '@/components/Toast';
 
 interface QuestionFormProps {
@@ -17,9 +17,21 @@ interface QuestionFormProps {
     test_cases?: TestCase[];
     points: number;
   }) => Promise<void>;
+  initialQuestion?: Question | null;
 }
 
-export default function QuestionForm({ open, onClose, onSubmit }: QuestionFormProps) {
+const defaultOptions = (): MCQOption[] => [
+  { id: uuidv4(), text: '' },
+  { id: uuidv4(), text: '' },
+  { id: uuidv4(), text: '' },
+  { id: uuidv4(), text: '' },
+];
+
+const defaultTestCases = (): TestCase[] => [
+  { id: uuidv4(), input: '', expected_output: '', is_hidden: false },
+];
+
+export default function QuestionForm({ open, onClose, onSubmit, initialQuestion }: QuestionFormProps) {
   const toast = useToast();
   const [type, setType] = useState<'mcq' | 'coding'>('mcq');
   const [title, setTitle] = useState('');
@@ -28,18 +40,65 @@ export default function QuestionForm({ open, onClose, onSubmit }: QuestionFormPr
   const [loading, setLoading] = useState(false);
 
   // MCQ state
-  const [options, setOptions] = useState<MCQOption[]>([
-    { id: uuidv4(), text: '' },
-    { id: uuidv4(), text: '' },
-    { id: uuidv4(), text: '' },
-    { id: uuidv4(), text: '' },
-  ]);
+  const [options, setOptions] = useState<MCQOption[]>(defaultOptions());
   const [correctAnswer, setCorrectAnswer] = useState('');
 
   // Coding state
-  const [testCases, setTestCases] = useState<TestCase[]>([
-    { id: uuidv4(), input: '', expected_output: '', is_hidden: false },
-  ]);
+  const [testCases, setTestCases] = useState<TestCase[]>(defaultTestCases());
+
+  const isEditing = !!initialQuestion;
+
+  // Populate form when editing
+  useEffect(() => {
+    if (initialQuestion && open) {
+      setType(initialQuestion.type);
+      setTitle(initialQuestion.title);
+      setDescription(initialQuestion.description || '');
+      setPoints(initialQuestion.points);
+      if (initialQuestion.type === 'mcq') {
+        if (initialQuestion.options && initialQuestion.options.length > 0) {
+          // Normalize options: handle both string[] and MCQOption[] formats from DB
+          const normalized = initialQuestion.options.map((o: unknown) =>
+            typeof o === 'string' ? { id: uuidv4(), text: o } : { id: (o as MCQOption).id || uuidv4(), text: (o as MCQOption).text }
+          );
+          setOptions(normalized);
+          // Map correct_answer index to option id if it's a numeric string
+          const ca = initialQuestion.correct_answer || '';
+          const index = parseInt(ca);
+          if (!isNaN(index) && index >= 0 && index < normalized.length) {
+            setCorrectAnswer(normalized[index].id);
+          } else {
+            // correct_answer is already an option id
+            setCorrectAnswer(ca);
+          }
+        } else {
+          setOptions(defaultOptions());
+          setCorrectAnswer('');
+        }
+      } else {
+        if (initialQuestion.test_cases && initialQuestion.test_cases.length > 0) {
+          const normalized = initialQuestion.test_cases.map((tc: unknown) => ({
+            id: (tc as TestCase).id || uuidv4(),
+            input: (tc as TestCase).input || '',
+            expected_output: (tc as TestCase).expected_output || '',
+            is_hidden: (tc as TestCase).is_hidden || false,
+          }));
+          setTestCases(normalized);
+        } else {
+          setTestCases(defaultTestCases());
+        }
+      }
+    } else if (!initialQuestion && open) {
+      // Reset for "Add" mode
+      setType('mcq');
+      setTitle('');
+      setDescription('');
+      setPoints(10);
+      setOptions(defaultOptions());
+      setCorrectAnswer('');
+      setTestCases(defaultTestCases());
+    }
+  }, [initialQuestion, open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,18 +138,6 @@ export default function QuestionForm({ open, onClose, onSubmit }: QuestionFormPr
         });
       }
 
-      // Reset form
-      setTitle('');
-      setDescription('');
-      setPoints(10);
-      setOptions([
-        { id: uuidv4(), text: '' },
-        { id: uuidv4(), text: '' },
-        { id: uuidv4(), text: '' },
-        { id: uuidv4(), text: '' },
-      ]);
-      setCorrectAnswer('');
-      setTestCases([{ id: uuidv4(), input: '', expected_output: '', is_hidden: false }]);
       onClose();
     } finally {
       setLoading(false);
@@ -142,7 +189,7 @@ export default function QuestionForm({ open, onClose, onSubmit }: QuestionFormPr
       <div className="relative w-full max-w-xl max-h-[85vh] overflow-hidden bg-background border border-border/50 rounded-lg shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
-          <h2 className="text-sm font-medium text-foreground">Add Question</h2>
+          <h2 className="text-sm font-medium text-foreground">{isEditing ? 'Edit Question' : 'Add Question'}</h2>
           <button
             onClick={onClose}
             className="w-6 h-6 flex items-center justify-center text-muted-foreground hover:text-foreground rounded transition-colors"
@@ -367,7 +414,7 @@ export default function QuestionForm({ open, onClose, onSubmit }: QuestionFormPr
                   : 'bg-purple-600 hover:bg-purple-500 dark:bg-purple-500 dark:hover:bg-purple-400 text-white dark:text-zinc-900'
               } disabled:bg-muted disabled:text-muted-foreground`}
             >
-              {loading ? 'Adding...' : 'Add Question'}
+              {loading ? (isEditing ? 'Saving...' : 'Adding...') : (isEditing ? 'Save Changes' : 'Add Question')}
             </button>
           </div>
         </form>

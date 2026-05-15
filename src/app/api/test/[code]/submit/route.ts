@@ -30,10 +30,10 @@ export async function POST(
       return NextResponse.json({ error: 'Test not found' }, { status: 404 });
     }
 
-    // Get the submission
+    // Get the submission — select only needed columns, not answers JSONB
     const { data: submission, error: submissionError } = await supabaseAdmin
       .from('submissions')
-      .select('*')
+      .select('id, test_id, status, started_at, student_email')
       .eq('id', submissionId)
       .single();
 
@@ -46,6 +46,33 @@ export async function POST(
         { error: 'Test has already been submitted' },
         { status: 400 }
       );
+    }
+
+    // Server-side timer enforcement: reject submissions past the deadline
+    // Allow 60 seconds grace period for network latency
+    if (submission.started_at) {
+      const startedAt = new Date(submission.started_at).getTime();
+      const durationMs = test.duration_minutes * 60 * 1000;
+      const gracePeriodMs = 60 * 1000;
+      const now = Date.now();
+
+      if (now > startedAt + durationMs + gracePeriodMs) {
+        // Auto-grade with whatever answers were saved
+        await supabaseAdmin
+          .from('submissions')
+          .update({
+            answers,
+            status: 'graded',
+            auto_submitted: true,
+            submitted_at: new Date().toISOString(),
+          })
+          .eq('id', submissionId);
+
+        return NextResponse.json(
+          { error: 'Time limit exceeded. Your answers have been saved.' },
+          { status: 400 }
+        );
+      }
     }
 
     // Get questions for grading
@@ -67,32 +94,27 @@ export async function POST(
     }
 
     // Grade coding questions
-    let codingScore = 0;
     const codingQuestions = questions.filter((q: Question) => q.type === 'coding');
 
-    // Try to use Judge0 for code evaluation
-    for (const question of codingQuestions) {
-      const studentCode = answers[question.id];
-      if (studentCode && question.test_cases && question.test_cases.length > 0) {
+    // Grade coding questions in parallel — each question's test cases already run in
+    // parallel inside evaluateCode(), so this parallelizes across questions too
+    const codingResults = await Promise.all(
+      codingQuestions.map(async (question: Question) => {
+        const studentCode = answers[question.id];
+        if (!studentCode || !question.test_cases || question.test_cases.length === 0) return 0;
         try {
           const testCases = question.test_cases as TestCase[];
           const pointsPerTestCase = Math.floor(question.points / testCases.length);
-          const result = await evaluateCode(
-            studentCode,
-            testCases,
-            question.id,
-            pointsPerTestCase
-          );
-          codingScore += result.score;
+          const result = await evaluateCode(studentCode, testCases, question.id, pointsPerTestCase);
+          return result.score;
         } catch (error) {
           console.error('Failed to evaluate code for question:', question.id, error);
-          // If Judge0 fails, give partial credit for submission attempt
-          if (studentCode.trim().length > 50) {
-            codingScore += Math.floor(question.points * 0.25);
-          }
+          // Partial credit for a genuine submission attempt
+          return studentCode.trim().length > 50 ? Math.floor(question.points * 0.25) : 0;
         }
-      }
-    }
+      })
+    );
+    const codingScore = codingResults.reduce((sum, s) => sum + s, 0);
 
     const totalScore = mcqScore + codingScore;
 

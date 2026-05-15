@@ -1,6 +1,17 @@
 'use client';
 
-import Editor from '@monaco-editor/react';
+import dynamic from 'next/dynamic';
+
+// Monaco Editor is ~2MB. Lazy load it so MCQ-only tests don't download
+// the editor bundle at all, and coding tests load it on demand.
+const Editor = dynamic(() => import('@monaco-editor/react'), {
+  ssr: false,
+  loading: () => (
+    <div className="rounded-lg overflow-hidden border border-slate-600 bg-[#1e1e1e] flex items-center justify-center" style={{ height: '400px' }}>
+      <div className="w-5 h-5 border-2 border-slate-500 border-t-slate-300 rounded-full animate-spin" />
+    </div>
+  ),
+});
 
 interface CodeEditorProps {
   value: string;
