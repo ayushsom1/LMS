@@ -2,7 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+let resendInstance: Resend | null = null;
+function getResend(): Resend {
+  if (!resendInstance) {
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) throw new Error('RESEND_API_KEY is not configured');
+    resendInstance = new Resend(apiKey);
+  }
+  return resendInstance;
+}
 
 // POST - Send test to batches
 export async function POST(
@@ -67,7 +75,7 @@ export async function POST(
         batch.map(async (email) => {
           const personalizedUrl = `${baseUrl}?email=${encodeURIComponent(email)}`;
 
-          await resend.emails.send({
+          await getResend().emails.send({
             from: 'Test Platform <onboarding@resend.dev>',
             to: email,
             subject: `Test Invitation: ${test.title}`,
