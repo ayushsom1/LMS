@@ -20,7 +20,9 @@ export async function GET() {
     checks.code_execution = false;
   }
 
-  const healthy = Object.values(checks).every(Boolean);
+  // Only the database is required for the app to be considered healthy.
+  // code_execution is informational — Piston/Judge0 outage shouldn't take down the box.
+  const healthy = checks.database;
 
   return NextResponse.json(
     { status: healthy ? 'healthy' : 'degraded', checks },
