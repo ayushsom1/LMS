@@ -324,7 +324,7 @@ export default function SubmissionDetailPage({
                               <span className="text-[10px] text-emerald-600 dark:text-emerald-400">Correct Answer</span>
                             )}
                             {isSelected && !isCorrectOption && (
-                              <span className="text-[10px] text-destructive">Student's Answer</span>
+                              <span className="text-[10px] text-destructive">Student&apos;s Answer</span>
                             )}
                           </div>
                         );
@@ -376,7 +376,7 @@ export default function SubmissionDetailPage({
                       {/* Student's Code */}
                       <div>
                         <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">
-                          Student's Code
+                          Student&apos;s Code
                         </p>
                         {answer ? (
                           <pre className="p-3 bg-zinc-900 dark:bg-zinc-950 border border-border/50 rounded-lg text-xs text-zinc-100 font-mono overflow-x-auto max-h-64 overflow-y-auto">

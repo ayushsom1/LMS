@@ -27,10 +27,11 @@ export default function Toast({ messages, onRemove }: ToastProps) {
 function ToastItem({ toast, onRemove }: { toast: ToastMessage; onRemove: (id: string) => void }) {
   const [isExiting, setIsExiting] = useState(false);
   const [progress, setProgress] = useState(100);
-  const startTimeRef = useRef(Date.now());
+  const startTimeRef = useRef<number>(0);
   const duration = toast.duration || 5000;
 
   useEffect(() => {
+    startTimeRef.current = Date.now();
     const exitTimer = setTimeout(() => setIsExiting(true), duration - 200);
     const removeTimer = setTimeout(() => onRemove(toast.id), duration);
 
