@@ -37,7 +37,7 @@ export async function sendResultsEmail({
     const percentage = maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0;
 
     const { error } = await getResend().emails.send({
-      from: 'LMS Test System <onboarding@resend.dev>',
+      from: process.env.EMAIL_FROM || 'LMS Test System <noreply@testrainer.in>',
       to: [to],
       subject: `Your Test Results: ${testTitle}`,
       html: `

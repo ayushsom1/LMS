@@ -76,7 +76,7 @@ export async function POST(
           const personalizedUrl = `${baseUrl}?email=${encodeURIComponent(email)}`;
 
           await getResend().emails.send({
-            from: 'Test Platform <onboarding@resend.dev>',
+            from: process.env.EMAIL_FROM || 'Test Platform <noreply@testrainer.in>',
             to: email,
             subject: `Test Invitation: ${test.title}`,
             html: `
