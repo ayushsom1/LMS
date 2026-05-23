@@ -14,8 +14,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "LMS Test Management",
-  description: "Test management system for students and administrators",
+  title: "Testrainer — Modern Assessment Platform",
+  description: "Conduct secure coding tests, MCQs, and assessments with detailed analytics.",
+  applicationName: "Testrainer",
+  authors: [{ name: "Testrainer" }],
 };
 
 export default function RootLayout({

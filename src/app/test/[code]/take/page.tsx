@@ -435,34 +435,45 @@ export default function TakeTestPage({ params }: { params: Promise<{ code: strin
       )}
 
       {/* Header */}
-      <header className="flex-shrink-0 h-12 px-4 flex items-center justify-between border-b border-border/50 bg-card/50">
-        <div className="flex items-center gap-4">
-          <span className="text-sm font-medium text-foreground">{test.title}</span>
-          <span className="text-xs text-muted-foreground">
+      <header className="flex-shrink-0 h-12 px-4 flex items-center justify-between border-b border-border/60 bg-card/70 backdrop-blur">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            <div className="w-5 h-5 rounded-md bg-gradient-to-br from-primary to-primary/70 grid place-items-center ring-1 ring-primary/20">
+              <svg viewBox="0 0 24 24" className="w-3 h-3 text-primary-foreground" fill="none" stroke="currentColor" strokeWidth={2.8} strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 7h14" />
+                <path d="M12 7v12" />
+                <path d="M8 19h8" />
+              </svg>
+            </div>
+            <span className="hidden sm:inline text-[11px] font-semibold tracking-tight text-muted-foreground uppercase">Testrainer</span>
+          </div>
+          <div className="w-px h-5 bg-border" />
+          <span className="text-sm font-medium text-foreground truncate max-w-[260px]" title={test.title}>{test.title}</span>
+          <span className="text-xs text-muted-foreground font-mono tabular-nums flex-shrink-0">
             Q{currentIndex + 1}/{questions.length}
           </span>
           {violationCount > 0 && (
-            <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-600 dark:text-amber-400">
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30 font-medium flex-shrink-0">
               {violationCount}/3 warnings
             </span>
           )}
         </div>
-        <div className="flex items-center gap-3">
-          <div className={`px-3 py-1.5 rounded font-mono text-sm ${
+        <div className="flex items-center gap-2">
+          <div className={`px-3 py-1.5 rounded-md font-mono text-sm font-semibold tabular-nums border ${
             isCriticalTime
-              ? 'bg-destructive/20 text-destructive animate-pulse'
+              ? 'bg-destructive/15 text-destructive border-destructive/30 animate-pulse'
               : isLowTime
-              ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400'
-              : 'bg-secondary text-foreground'
+              ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30'
+              : 'bg-secondary text-foreground border-border/60'
           }`}>
             {formatTime(timeLeft)}
           </div>
           <button
             onClick={handleSubmit}
             disabled={submitting}
-            className="h-8 px-4 bg-emerald-600 hover:bg-emerald-500 dark:bg-emerald-500 dark:hover:bg-emerald-400 disabled:bg-muted text-white dark:text-zinc-900 text-xs font-medium rounded transition-colors"
+            className="h-8 px-4 bg-emerald-600 hover:bg-emerald-500 dark:bg-emerald-500 dark:hover:bg-emerald-400 disabled:bg-muted disabled:text-muted-foreground text-white dark:text-emerald-950 text-xs font-medium rounded-md transition-colors shadow-sm shadow-emerald-500/20"
           >
-            {submitting ? 'Submitting...' : 'Submit'}
+            {submitting ? 'Submitting…' : 'Submit'}
           </button>
         </div>
       </header>
@@ -477,12 +488,12 @@ export default function TakeTestPage({ params }: { params: Promise<{ code: strin
               <button
                 key={q.id}
                 onClick={() => setCurrentIndex(index)}
-                className={`flex-shrink-0 w-8 h-8 rounded text-xs font-mono transition-all ${
+                className={`flex-shrink-0 w-8 h-8 rounded-md text-xs font-mono font-semibold tabular-nums transition-all border ${
                   isCurrent
-                    ? 'bg-primary text-primary-foreground'
+                    ? 'bg-primary text-primary-foreground border-primary shadow-sm shadow-primary/30'
                     : isAnswered
-                    ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
-                    : 'bg-secondary text-muted-foreground hover:bg-secondary/80'
+                    ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 hover:border-emerald-500/50'
+                    : 'bg-card text-muted-foreground border-border hover:bg-secondary hover:text-foreground'
                 }`}
               >
                 {index + 1}

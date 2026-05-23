@@ -37,7 +37,7 @@ export async function sendResultsEmail({
     const percentage = maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0;
 
     const { error } = await getResend().emails.send({
-      from: process.env.EMAIL_FROM || 'LMS Test System <noreply@testrainer.in>',
+      from: process.env.EMAIL_FROM || 'Testrainer <noreply@testrainer.in>',
       to: [to],
       subject: `Your Test Results: ${testTitle}`,
       html: `
@@ -49,8 +49,9 @@ export async function sendResultsEmail({
             <title>Test Results</title>
           </head>
           <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
-              <h1 style="color: white; margin: 0; font-size: 24px;">Test Results</h1>
+            <div style="background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); padding: 32px; border-radius: 12px 12px 0 0; text-align: center;">
+              <div style="color: white; font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.85; margin-bottom: 8px; font-weight: 600;">Testrainer</div>
+              <h1 style="color: white; margin: 0; font-size: 26px; font-weight: 600; letter-spacing: -0.01em;">Your Test Results</h1>
             </div>
 
             <div style="background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #e9ecef; border-top: none;">
@@ -87,7 +88,7 @@ export async function sendResultsEmail({
             </div>
 
             <p style="text-align: center; color: #999; font-size: 12px; margin-top: 20px;">
-              This is an automated email from the LMS Test System.
+              This is an automated email from Testrainer · testrainer.in
             </p>
           </body>
         </html>
