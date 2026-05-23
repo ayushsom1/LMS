@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { formatDuration, formatDate } from '@/lib/utils';
 import ThemeToggle from '@/components/ThemeToggle';
+import Logo from '@/components/Logo';
 
 interface TestInfo {
   id: string;
@@ -73,32 +74,23 @@ export default function StudentDashboard() {
       });
   }, [router, fetchData]);
 
-  const getTestForSubmission = (testId: string) => {
-    return tests.find((t) => t.id === testId);
-  };
+  const getTestForSubmission = (testId: string) => tests.find((t) => t.id === testId);
 
   const handleLogout = async () => {
     await fetch('/api/auth/logout', { method: 'DELETE' });
     router.push('/login');
   };
 
-  // Split submissions into categories
   const inProgressSubmissions = submissions.filter((s) => s.status === 'in_progress');
   const completedSubmissions = submissions.filter((s) => s.status === 'graded' || s.status === 'submitted');
 
-  // In-progress tests (started but not submitted)
-  const activeTests = inProgressSubmissions.map((s) => ({
-    submission: s,
-    test: getTestForSubmission(s.test_id),
-  })).filter((item) => item.test?.is_active);
+  const activeTests = inProgressSubmissions
+    .map((s) => ({ submission: s, test: getTestForSubmission(s.test_id) }))
+    .filter((item) => item.test?.is_active);
 
-  // Upcoming tests: assigned via batch but not yet started (no submission exists)
   const submittedTestIds = new Set(submissions.map((s) => s.test_id));
-  const upcomingTests = tests.filter(
-    (t) => !submittedTestIds.has(t.id) && t.is_active
-  );
+  const upcomingTests = tests.filter((t) => !submittedTestIds.has(t.id) && t.is_active);
 
-  // Calculate stats
   const totalTests = completedSubmissions.length;
   const avgScore = totalTests > 0
     ? Math.round(completedSubmissions.reduce((sum, s) => {
@@ -123,81 +115,92 @@ export default function StudentDashboard() {
     );
   }
 
+  const firstName = studentName?.split(' ')[0] || 'there';
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-20 bg-background/80 backdrop-blur-sm border-b border-border/50">
-        <div className="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-2 h-2 rounded-full bg-primary" />
-            <span className="text-sm font-medium text-foreground">My Tests</span>
-            <span className="text-xs text-muted-foreground font-mono truncate max-w-[200px]">{email}</span>
-          </div>
+      <header className="sticky top-0 z-20 bg-background/85 backdrop-blur border-b border-border/70">
+        <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
+          <Logo size="sm" />
           <div className="flex items-center gap-2">
+            <div className="hidden sm:flex items-center gap-2 mr-2 text-xs">
+              <div className="w-7 h-7 rounded-full bg-primary/10 border border-primary/20 grid place-items-center text-[11px] font-semibold text-primary">
+                {(studentName?.[0] || email?.[0] || '?').toUpperCase()}
+              </div>
+              <span className="text-muted-foreground font-mono truncate max-w-[180px]">{email}</span>
+            </div>
             <ThemeToggle />
             <button
               onClick={() => router.push('/')}
-              className="h-8 px-3 bg-secondary hover:bg-secondary/80 text-foreground text-xs font-medium rounded flex items-center gap-1.5 transition-colors"
+              className="h-8 px-3 bg-primary text-primary-foreground text-xs font-medium rounded-md flex items-center gap-1.5 transition-colors hover:bg-primary/90 shadow-sm shadow-primary/20"
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
               </svg>
-              Take Test
+              Take test
             </button>
             <button
               onClick={handleLogout}
-              className="h-8 px-3 text-muted-foreground hover:text-foreground text-xs font-mono transition-colors"
+              className="h-8 w-8 grid place-items-center text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-secondary"
+              title="Logout"
             >
-              logout
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
             </button>
           </div>
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-4 py-6">
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-3 mb-8">
-          <div className="p-4 bg-card border border-border/50 rounded-lg">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Tests Taken</p>
-            <p className="text-2xl font-mono text-foreground">{totalTests}</p>
-          </div>
-          <div className="p-4 bg-card border border-border/50 rounded-lg">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Avg Score</p>
-            <p className="text-2xl font-mono text-foreground">{avgScore}<span className="text-sm text-muted-foreground">%</span></p>
-          </div>
-          <div className="p-4 bg-primary/10 border border-primary/30 rounded-lg">
-            <p className="text-[10px] text-primary uppercase tracking-wider mb-1">Best Score</p>
-            <p className="text-2xl font-mono text-primary">{bestScore}<span className="text-sm text-primary/70">%</span></p>
-          </div>
+      <main className="max-w-5xl mx-auto px-6 py-8">
+        {/* Welcome */}
+        <div className="mb-6">
+          <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium mb-1">Dashboard</p>
+          <h1 className="text-2xl font-semibold tracking-tight">Hi {firstName} 👋</h1>
+          <p className="text-sm text-muted-foreground mt-1">Here&apos;s an overview of your assessments.</p>
         </div>
 
-        {/* Upcoming Tests (assigned but not started) */}
+        {/* Stats */}
+        <div className="grid grid-cols-3 gap-3 mb-8">
+          <StatCard label="Tests taken" value={totalTests} />
+          <StatCard label="Average score" value={`${avgScore}%`} />
+          <StatCard label="Best score" value={`${bestScore}%`} accent />
+        </div>
+
+        {/* Upcoming */}
         {upcomingTests.length > 0 && (
-          <div className="mb-8">
-            <h2 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              Upcoming Tests
-              <span className="text-xs text-muted-foreground font-mono">({upcomingTests.length})</span>
-            </h2>
+          <Section
+            title="Upcoming tests"
+            badge={upcomingTests.length}
+            badgeColor="emerald"
+          >
             <div className="space-y-2">
               {upcomingTests.map((test) => (
                 <div
                   key={test.id}
-                  className="flex items-center justify-between p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-lg"
+                  className="flex items-center justify-between p-4 bg-card border border-emerald-500/20 rounded-lg hover:border-emerald-500/40 transition-colors"
                 >
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">{test.title}</p>
-                    <div className="flex items-center gap-3 mt-1">
-                      <span className="text-xs text-muted-foreground font-mono">{formatDuration(test.duration_minutes)}</span>
-                      <span className="text-xs text-muted-foreground">{test.question_count} questions</span>
-                      <span className="text-xs text-muted-foreground">{test.total_points} points</span>
+                  <div className="flex items-start gap-3 flex-1 min-w-0">
+                    <div className="w-9 h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/20 grid place-items-center flex-shrink-0">
+                      <svg className="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                      </svg>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">{test.title}</p>
+                      <div className="flex items-center flex-wrap gap-x-3 gap-y-1 mt-1">
+                        <Meta icon="clock">{formatDuration(test.duration_minutes)}</Meta>
+                        <Meta icon="layers">{test.question_count} questions</Meta>
+                        <Meta icon="star">{test.total_points} points</Meta>
+                      </div>
                     </div>
                   </div>
                   <button
                     onClick={() => router.push(`/test/${test.access_code}?email=${encodeURIComponent(email)}`)}
-                    className="ml-4 h-9 px-4 bg-emerald-600 hover:bg-emerald-500 dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white dark:text-zinc-900 text-xs font-medium rounded transition-colors flex items-center gap-1.5"
+                    className="ml-4 h-9 px-4 bg-emerald-600 hover:bg-emerald-500 dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white dark:text-emerald-950 text-xs font-medium rounded-md transition-colors flex items-center gap-1.5 shadow-sm"
                   >
-                    Start Test
+                    Start test
                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                     </svg>
@@ -205,37 +208,40 @@ export default function StudentDashboard() {
                 </div>
               ))}
             </div>
-          </div>
+          </Section>
         )}
 
-        {/* Active / In-Progress Tests */}
+        {/* Active / In-Progress */}
         {activeTests.length > 0 && (
-          <div className="mb-8">
-            <h2 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-              In Progress
-            </h2>
+          <Section title="In progress" badge={activeTests.length} badgeColor="amber">
             <div className="space-y-2">
               {activeTests.map(({ submission, test }) => (
                 <div
                   key={submission.id}
-                  className="flex items-center justify-between p-4 bg-amber-500/5 border border-amber-500/20 rounded-lg"
+                  className="flex items-center justify-between p-4 bg-card border border-amber-500/20 rounded-lg"
                 >
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">{test?.title || 'Unknown Test'}</p>
-                    <div className="flex items-center gap-3 mt-1">
-                      <span className="text-xs text-muted-foreground font-mono">{formatDuration(test?.duration_minutes || 0)}</span>
-                      <span className="text-xs text-muted-foreground">{test?.question_count || 0} questions</span>
-                      {submission.started_at && (
-                        <span className="text-xs text-amber-600 dark:text-amber-400">
-                          Started {formatDate(submission.started_at)}
-                        </span>
-                      )}
+                  <div className="flex items-start gap-3 flex-1 min-w-0">
+                    <div className="w-9 h-9 rounded-lg bg-amber-500/10 border border-amber-500/20 grid place-items-center flex-shrink-0">
+                      <svg className="w-4 h-4 text-amber-600 dark:text-amber-400 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">{test?.title || 'Unknown Test'}</p>
+                      <div className="flex items-center flex-wrap gap-x-3 gap-y-1 mt-1">
+                        <Meta icon="clock">{formatDuration(test?.duration_minutes || 0)}</Meta>
+                        <Meta icon="layers">{test?.question_count || 0} questions</Meta>
+                        {submission.started_at && (
+                          <span className="text-xs text-amber-600 dark:text-amber-400">
+                            Started {formatDate(submission.started_at)}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <button
                     onClick={() => router.push(`/test/${test?.access_code}?email=${encodeURIComponent(email)}`)}
-                    className="ml-4 h-9 px-4 bg-amber-600 hover:bg-amber-500 dark:bg-amber-500 dark:hover:bg-amber-400 text-white dark:text-zinc-900 text-xs font-medium rounded transition-colors flex items-center gap-1.5"
+                    className="ml-4 h-9 px-4 bg-amber-600 hover:bg-amber-500 dark:bg-amber-500 dark:hover:bg-amber-400 text-white dark:text-amber-950 text-xs font-medium rounded-md transition-colors flex items-center gap-1.5 shadow-sm"
                   >
                     Resume
                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -245,33 +251,24 @@ export default function StudentDashboard() {
                 </div>
               ))}
             </div>
-          </div>
+          </Section>
         )}
 
-        {/* Completed Tests */}
-        <div>
-          <h2 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
-            <svg className="w-4 h-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
-            Completed Tests
-            <span className="text-xs text-muted-foreground font-mono">({completedSubmissions.length})</span>
-          </h2>
-
+        {/* Completed */}
+        <Section title="Completed tests" badge={completedSubmissions.length}>
           {completedSubmissions.length === 0 ? (
-            <div className="text-center py-16 bg-secondary/30 border border-border/30 border-dashed rounded-lg">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-lg bg-secondary border border-border mb-4">
-                <svg className="w-6 h-6 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            <div className="text-center py-16 surface-elevated">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 mb-4">
+                <svg className="w-6 h-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.7}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
               </div>
-              <p className="text-sm text-muted-foreground mb-1">No completed tests yet</p>
-              <p className="text-xs text-muted-foreground">Your test results will appear here</p>
+              <p className="text-sm font-medium text-foreground mb-1">No completed tests yet</p>
+              <p className="text-xs text-muted-foreground">Your results will appear here once you finish a test.</p>
             </div>
           ) : (
-            <div className="space-y-2">
-              {/* Table header */}
-              <div className="grid grid-cols-12 gap-4 px-4 py-2 text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
+            <div className="surface-elevated overflow-hidden">
+              <div className="grid grid-cols-12 gap-4 px-5 py-3 text-[10px] text-muted-foreground uppercase tracking-wider font-semibold bg-secondary/40">
                 <div className="col-span-4">Test</div>
                 <div className="col-span-1 text-center">MCQ</div>
                 <div className="col-span-1 text-center">Code</div>
@@ -280,74 +277,159 @@ export default function StudentDashboard() {
                 <div className="col-span-2 text-right">Action</div>
               </div>
 
-              {completedSubmissions.map((submission) => {
-                const test = getTestForSubmission(submission.test_id);
-                const maxPoints = test?.total_points || 0;
-                const percentage = maxPoints > 0 ? Math.round((submission.total_score / maxPoints) * 100) : 0;
+              <div className="divide-y divide-border/70">
+                {completedSubmissions.map((submission) => {
+                  const test = getTestForSubmission(submission.test_id);
+                  const maxPoints = test?.total_points || 0;
+                  const percentage = maxPoints > 0 ? Math.round((submission.total_score / maxPoints) * 100) : 0;
 
-                return (
-                  <div
-                    key={submission.id}
-                    className="grid grid-cols-12 gap-4 px-4 py-3 bg-card hover:bg-secondary/50 border border-border/50 rounded-lg items-center transition-colors group"
-                  >
-                    <div className="col-span-4">
-                      <p className="text-sm font-medium text-foreground truncate">{test?.title || 'Unknown Test'}</p>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-[10px] text-muted-foreground">{test?.question_count || 0} questions</span>
-                        {submission.auto_submitted && (
-                          <span className="text-[10px] text-destructive">Auto-submitted</span>
-                        )}
-                        {(submission.violation_count || 0) > 0 && (
-                          <span className="text-[10px] text-amber-600 dark:text-amber-400">
-                            {submission.violation_count} violation{submission.violation_count > 1 ? 's' : ''}
-                          </span>
-                        )}
+                  return (
+                    <div
+                      key={submission.id}
+                      className="grid grid-cols-12 gap-4 px-5 py-3.5 hover:bg-secondary/30 items-center transition-colors group"
+                    >
+                      <div className="col-span-4 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{test?.title || 'Unknown Test'}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-[10px] text-muted-foreground">{test?.question_count || 0} questions</span>
+                          {submission.auto_submitted && (
+                            <span className="text-[10px] text-destructive">· Auto-submitted</span>
+                          )}
+                          {(submission.violation_count || 0) > 0 && (
+                            <span className="text-[10px] text-amber-600 dark:text-amber-400">
+                              · {submission.violation_count} violation{submission.violation_count > 1 ? 's' : ''}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                    <div className="col-span-1 text-center">
-                      <span className="text-sm text-muted-foreground font-mono">{submission.mcq_score}</span>
-                    </div>
-                    <div className="col-span-1 text-center">
-                      <span className="text-sm text-muted-foreground font-mono">{submission.coding_score}</span>
-                    </div>
-                    <div className="col-span-2 text-center">
-                      <span className="text-sm font-mono font-medium text-primary">{submission.total_score}</span>
-                      <span className="text-xs text-muted-foreground">/{maxPoints}</span>
-                      <div className="mt-1">
-                        <div className="w-full h-1 bg-secondary rounded-full overflow-hidden">
+                      <div className="col-span-1 text-center">
+                        <span className="text-sm text-muted-foreground font-mono tabular-nums">{submission.mcq_score}</span>
+                      </div>
+                      <div className="col-span-1 text-center">
+                        <span className="text-sm text-muted-foreground font-mono tabular-nums">{submission.coding_score}</span>
+                      </div>
+                      <div className="col-span-2 text-center">
+                        <div>
+                          <span className="text-sm font-semibold font-mono tabular-nums text-foreground">{submission.total_score}</span>
+                          <span className="text-xs text-muted-foreground">/{maxPoints}</span>
+                          <span className={
+                            'ml-1.5 text-[10px] font-semibold ' +
+                            (percentage >= 70 ? 'text-emerald-600 dark:text-emerald-400'
+                              : percentage >= 40 ? 'text-amber-600 dark:text-amber-400'
+                              : 'text-destructive')
+                          }>
+                            {percentage}%
+                          </span>
+                        </div>
+                        <div className="mt-1.5 w-full h-1 bg-secondary rounded-full overflow-hidden">
                           <div
-                            className={`h-full rounded-full transition-all ${
-                              percentage >= 70 ? 'bg-emerald-500' : percentage >= 40 ? 'bg-amber-500' : 'bg-destructive'
-                            }`}
+                            className={
+                              'h-full rounded-full transition-all ' +
+                              (percentage >= 70 ? 'bg-emerald-500'
+                                : percentage >= 40 ? 'bg-amber-500'
+                                : 'bg-destructive')
+                            }
                             style={{ width: `${percentage}%` }}
                           />
                         </div>
                       </div>
+                      <div className="col-span-2 text-center">
+                        <span className="text-xs text-muted-foreground tabular-nums">
+                          {submission.submitted_at ? formatDate(submission.submitted_at) : '—'}
+                        </span>
+                      </div>
+                      <div className="col-span-2 flex justify-end">
+                        <button
+                          onClick={() => router.push(`/student/results/${submission.id}`)}
+                          className="h-7 px-2.5 text-xs text-muted-foreground hover:text-foreground hover:bg-secondary rounded-md transition-colors flex items-center gap-1 opacity-0 group-hover:opacity-100"
+                        >
+                          View
+                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                          </svg>
+                        </button>
+                      </div>
                     </div>
-                    <div className="col-span-2 text-center">
-                      <span className="text-xs text-muted-foreground">
-                        {submission.submitted_at ? formatDate(submission.submitted_at) : '—'}
-                      </span>
-                    </div>
-                    <div className="col-span-2 flex justify-end">
-                      <button
-                        onClick={() => router.push(`/student/results/${submission.id}`)}
-                        className="h-7 px-3 text-xs text-muted-foreground hover:text-foreground hover:bg-secondary rounded transition-colors flex items-center gap-1 opacity-0 group-hover:opacity-100"
-                      >
-                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
-                        Details
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           )}
-        </div>
+        </Section>
       </main>
     </div>
+  );
+}
+
+function Section({
+  title,
+  badge,
+  badgeColor,
+  children,
+}: {
+  title: string;
+  badge?: number;
+  badgeColor?: 'emerald' | 'amber';
+  children: React.ReactNode;
+}) {
+  const dotColor = badgeColor === 'emerald'
+    ? 'bg-emerald-500'
+    : badgeColor === 'amber'
+      ? 'bg-amber-500 animate-pulse'
+      : 'bg-muted-foreground/40';
+  return (
+    <div className="mb-8">
+      <div className="flex items-center gap-2 mb-3">
+        <span className={'w-1.5 h-1.5 rounded-full ' + dotColor} />
+        <h2 className="text-sm font-semibold text-foreground tracking-tight">{title}</h2>
+        {typeof badge === 'number' && (
+          <span className="text-[10px] text-muted-foreground font-mono tabular-nums">({badge})</span>
+        )}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function StatCard({ label, value, accent }: { label: string; value: string | number; accent?: boolean }) {
+  return (
+    <div
+      className={
+        'surface-elevated p-4 ' + (accent ? 'ring-1 ring-primary/20 bg-primary/[0.03]' : '')
+      }
+    >
+      <p className={'text-[10px] uppercase tracking-wider mb-1 font-medium ' + (accent ? 'text-primary' : 'text-muted-foreground')}>
+        {label}
+      </p>
+      <p className={'text-2xl font-semibold tabular-nums tracking-tight ' + (accent ? 'text-primary' : 'text-foreground')}>
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function Meta({ icon, children }: { icon: 'clock' | 'layers' | 'star'; children: React.ReactNode }) {
+  const Icon = {
+    clock: (
+      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    ),
+    layers: (
+      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+      </svg>
+    ),
+    star: (
+      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.196-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.783-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+      </svg>
+    ),
+  }[icon];
+  return (
+    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+      {Icon}
+      {children}
+    </span>
   );
 }

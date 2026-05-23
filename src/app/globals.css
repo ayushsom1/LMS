@@ -48,109 +48,109 @@
 
 /* Light mode (default) */
 :root {
-  --radius: 0.375rem;
-  --background: #fafafa;
-  --foreground: #18181b;
+  --radius: 0.5rem;
+  --background: #f8fafc;
+  --foreground: #0f172a;
   --card: #ffffff;
-  --card-foreground: #18181b;
+  --card-foreground: #0f172a;
   --popover: #ffffff;
-  --popover-foreground: #18181b;
-  --primary: #0891b2;
+  --popover-foreground: #0f172a;
+  --primary: #4f46e5;
   --primary-foreground: #ffffff;
-  --secondary: #f4f4f5;
-  --secondary-foreground: #3f3f46;
-  --muted: #f4f4f5;
-  --muted-foreground: #71717a;
-  --accent: #0891b2;
+  --secondary: #f1f5f9;
+  --secondary-foreground: #334155;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  --accent: #6366f1;
   --accent-foreground: #ffffff;
   --destructive: #dc2626;
-  --border: #e4e4e7;
-  --input: #e4e4e7;
-  --ring: #0891b2;
-  --chart-1: #0891b2;
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: #6366f1;
+  --chart-1: #4f46e5;
   --chart-2: #059669;
   --chart-3: #d97706;
-  --chart-4: #7c3aed;
-  --chart-5: #db2777;
-  --sidebar: #fafafa;
-  --sidebar-foreground: #18181b;
-  --sidebar-primary: #0891b2;
+  --chart-4: #db2777;
+  --chart-5: #0ea5e9;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #0f172a;
+  --sidebar-primary: #4f46e5;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #f4f4f5;
-  --sidebar-accent-foreground: #18181b;
-  --sidebar-border: #e4e4e7;
-  --sidebar-ring: #0891b2;
+  --sidebar-accent: #f1f5f9;
+  --sidebar-accent-foreground: #0f172a;
+  --sidebar-border: #e2e8f0;
+  --sidebar-ring: #6366f1;
 
   /* Custom properties */
   --success: #059669;
   --warning: #d97706;
   --surface: #ffffff;
-  --surface-elevated: #f4f4f5;
+  --surface-elevated: #f1f5f9;
 
   /* Theme-aware colors for components */
-  --bg-page: #fafafa;
+  --bg-page: #f8fafc;
   --bg-card: #ffffff;
   --bg-input: #ffffff;
-  --bg-hover: #f4f4f5;
-  --border-subtle: #e4e4e7;
-  --border-default: #d4d4d8;
-  --text-primary: #18181b;
-  --text-secondary: #3f3f46;
-  --text-muted: #71717a;
+  --bg-hover: #f1f5f9;
+  --border-subtle: #e2e8f0;
+  --border-default: #cbd5e1;
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
   --text-inverted: #ffffff;
 }
 
 /* Dark mode */
 .dark {
-  --background: #0a0a0b;
-  --foreground: #e4e4e7;
-  --card: #121214;
-  --card-foreground: #e4e4e7;
-  --popover: #121214;
-  --popover-foreground: #e4e4e7;
-  --primary: #22d3ee;
-  --primary-foreground: #0a0a0b;
-  --secondary: #1a1a1d;
-  --secondary-foreground: #a1a1aa;
-  --muted: #18181b;
-  --muted-foreground: #71717a;
-  --accent: #22d3ee;
-  --accent-foreground: #0a0a0b;
-  --destructive: #ef4444;
-  --border: #27272a;
-  --input: #27272a;
-  --ring: #22d3ee;
-  --chart-1: #22d3ee;
-  --chart-2: #10b981;
-  --chart-3: #f59e0b;
-  --chart-4: #8b5cf6;
-  --chart-5: #ec4899;
-  --sidebar: #0a0a0b;
-  --sidebar-foreground: #e4e4e7;
-  --sidebar-primary: #22d3ee;
-  --sidebar-primary-foreground: #0a0a0b;
-  --sidebar-accent: #18181b;
-  --sidebar-accent-foreground: #e4e4e7;
-  --sidebar-border: #27272a;
-  --sidebar-ring: #22d3ee;
+  --background: #07090f;
+  --foreground: #e2e8f0;
+  --card: #0f1320;
+  --card-foreground: #e2e8f0;
+  --popover: #0f1320;
+  --popover-foreground: #e2e8f0;
+  --primary: #818cf8;
+  --primary-foreground: #07090f;
+  --secondary: #131826;
+  --secondary-foreground: #cbd5e1;
+  --muted: #0f1320;
+  --muted-foreground: #64748b;
+  --accent: #a5b4fc;
+  --accent-foreground: #07090f;
+  --destructive: #f87171;
+  --border: #1e2433;
+  --input: #1e2433;
+  --ring: #818cf8;
+  --chart-1: #818cf8;
+  --chart-2: #34d399;
+  --chart-3: #fbbf24;
+  --chart-4: #f472b6;
+  --chart-5: #38bdf8;
+  --sidebar: #0a0d15;
+  --sidebar-foreground: #e2e8f0;
+  --sidebar-primary: #818cf8;
+  --sidebar-primary-foreground: #07090f;
+  --sidebar-accent: #131826;
+  --sidebar-accent-foreground: #e2e8f0;
+  --sidebar-border: #1e2433;
+  --sidebar-ring: #818cf8;
 
   /* Custom properties */
-  --success: #10b981;
-  --warning: #f59e0b;
-  --surface: #121214;
-  --surface-elevated: #18181b;
+  --success: #34d399;
+  --warning: #fbbf24;
+  --surface: #0f1320;
+  --surface-elevated: #131826;
 
   /* Theme-aware colors for components */
-  --bg-page: #0a0a0b;
-  --bg-card: #121214;
-  --bg-input: #18181b;
-  --bg-hover: #1a1a1d;
-  --border-subtle: #27272a;
-  --border-default: #3f3f46;
-  --text-primary: #e4e4e7;
-  --text-secondary: #a1a1aa;
-  --text-muted: #71717a;
-  --text-inverted: #0a0a0b;
+  --bg-page: #07090f;
+  --bg-card: #0f1320;
+  --bg-input: #131826;
+  --bg-hover: #1a2032;
+  --border-subtle: #1e2433;
+  --border-default: #2a3245;
+  --text-primary: #e2e8f0;
+  --text-secondary: #cbd5e1;
+  --text-muted: #64748b;
+  --text-inverted: #07090f;
 }
 
 @layer base {
@@ -227,37 +227,62 @@ html {
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-/* Button hover shine (dark mode only) — opt-in via `.btn-shine`.
-   Adds a glossy white radial highlight from the top-left corner on hover.
-   Uses screen blend so the sheen only ADDS light and never obscures text. */
-.btn-shine {
-  position: relative;
-  isolation: isolate;
+/* Enterprise utility classes */
+.surface-card {
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
 }
 
-.dark .btn-shine::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  border-radius: inherit;
-  background: radial-gradient(
-    140% 110% at 0% 0%,
-    rgba(255, 255, 255, 0.6) 0%,
-    rgba(255, 255, 255, 0.3) 20%,
-    rgba(255, 255, 255, 0.1) 42%,
-    rgba(255, 255, 255, 0) 65%
-  );
-  mix-blend-mode: screen;
-  opacity: 0;
-  transition: opacity 0.25s ease;
-  z-index: 2;
+.surface-elevated {
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) + 2px);
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.04), 0 1px 3px 0 rgb(0 0 0 / 0.06);
 }
 
-.dark .btn-shine:hover::before {
-  opacity: 1;
+.dark .surface-elevated {
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.2), 0 1px 3px 0 rgb(0 0 0 / 0.3);
 }
 
-.dark .btn-shine:disabled::before {
-  opacity: 0 !important;
+/* Subtle radial spotlight for hero areas */
+.spotlight {
+  background-image: radial-gradient(ellipse 80% 50% at 50% -10%, color-mix(in srgb, var(--primary) 14%, transparent), transparent 70%);
+}
+
+/* Brand gradient text */
+.text-gradient-brand {
+  background: linear-gradient(135deg, var(--primary), color-mix(in srgb, var(--primary) 60%, #a855f7));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+/* Soft focus ring used across forms */
+.focus-ring {
+  @apply focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/60;
+}
+
+/* Status dot */
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  display: inline-block;
+  box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 18%, transparent);
+}
+
+/* Number / KPI display font tweak */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Fade-in on mount */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-in {
+  animation: fadeInUp 0.35s ease-out both;
 }
