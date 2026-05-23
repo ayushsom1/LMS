@@ -2,9 +2,63 @@
 
 import { useEffect, useState, use, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Test } from '@/types';
+import { Test, TestAccessInfo } from '@/types';
 import { formatDuration } from '@/lib/utils';
 import ThemeToggle from '@/components/ThemeToggle';
+
+function formatCountdown(ms: number): string {
+  if (ms <= 0) return '00:00:00';
+  const totalSec = Math.floor(ms / 1000);
+  const days = Math.floor(totalSec / 86400);
+  const h = Math.floor((totalSec % 86400) / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return days > 0 ? `${days}d ${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(h)}:${pad(m)}:${pad(s)}`;
+}
+
+function AccessGate({ access, now, onBack }: { access: TestAccessInfo; now: number; onBack: () => void }) {
+  const isScheduled = access.status === 'not_started' && access.starts_at;
+  const remaining = isScheduled ? new Date(access.starts_at!).getTime() - now : 0;
+  const headings: Record<TestAccessInfo['status'], string> = {
+    open: 'Test is open',
+    not_started: 'Test starts soon',
+    ended: 'Test closed',
+    inactive: 'Test unavailable',
+  };
+  const accentColor = access.status === 'ended' || access.status === 'inactive'
+    ? 'text-muted-foreground bg-secondary'
+    : 'text-amber-600 dark:text-amber-400 bg-amber-500/10';
+
+  return (
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4">
+      <div className={`w-12 h-12 rounded-lg ${accentColor} flex items-center justify-center mb-4`}>
+        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      </div>
+      <h1 className="text-lg font-semibold text-foreground mb-1">{headings[access.status]}</h1>
+      <p className="text-sm text-muted-foreground mb-4">{access.message}</p>
+      {isScheduled && (
+        <div className="mb-4 text-center">
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Starts in</p>
+          <p className="text-3xl font-mono text-foreground tabular-nums">{formatCountdown(remaining)}</p>
+          <p className="text-[11px] text-muted-foreground mt-2">
+            {new Date(access.starts_at!).toLocaleString()}
+          </p>
+        </div>
+      )}
+      {access.status === 'ended' && access.ends_at && (
+        <p className="text-[11px] text-muted-foreground mb-4">
+          Closed at {new Date(access.ends_at).toLocaleString()}
+        </p>
+      )}
+      <button onClick={onBack} className="text-xs text-primary hover:text-primary/80">
+        ← Back to home
+      </button>
+    </div>
+  );
+}
 
 export default function TestEntryPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = use(params);
@@ -13,6 +67,8 @@ export default function TestEntryPage({ params }: { params: Promise<{ code: stri
   const emailFromUrl = searchParams.get('email');
 
   const [test, setTest] = useState<Test | null>(null);
+  const [accessInfo, setAccessInfo] = useState<TestAccessInfo | null>(null);
+  const [now, setNow] = useState(() => Date.now());
   const [loading, setLoading] = useState(true);
   const [studentName, setStudentName] = useState('');
   const [studentEmail, setStudentEmail] = useState(emailFromUrl || '');
@@ -56,11 +112,14 @@ export default function TestEntryPage({ params }: { params: Promise<{ code: stri
   const fetchTest = useCallback(async () => {
     try {
       const response = await fetch(`/api/test/${code}`);
-      if (response.ok) {
-        const data = await response.json();
+      const data = await response.json().catch(() => null);
+      if (response.ok && data) {
         setTest(data.test || data);
+        setAccessInfo(null);
+      } else if (response.status === 403 && data?.access) {
+        setAccessInfo(data.access as TestAccessInfo);
       } else {
-        setError('Test not found');
+        setError(data?.error || 'Test not found');
       }
     } catch {
       setError('Failed to load test');
@@ -111,13 +170,27 @@ export default function TestEntryPage({ params }: { params: Promise<{ code: stri
     }
   }, [code, router]);
 
-  // Auto-start test if logged in and test is loaded
+  // Auto-start test if logged in and test is loaded and open
   useEffect(() => {
-    if (loggedIn && test && test.is_active && !autoStarting && !starting && !error) {
+    if (loggedIn && test && test.is_active && !accessInfo && !autoStarting && !starting && !error) {
       setAutoStarting(true);
       startTest(studentName, studentEmail);
     }
-  }, [loggedIn, test, autoStarting, starting, error, studentName, studentEmail, startTest]);
+  }, [loggedIn, test, accessInfo, autoStarting, starting, error, studentName, studentEmail, startTest]);
+
+  // Ticker for countdown / auto-refresh when start time arrives
+  useEffect(() => {
+    if (!accessInfo) return;
+    const interval = setInterval(() => {
+      setNow(Date.now());
+      if (accessInfo.status === 'not_started' && accessInfo.starts_at) {
+        if (Date.now() >= new Date(accessInfo.starts_at).getTime()) {
+          fetchTest();
+        }
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [accessInfo, fetchTest]);
 
   const handleStart = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -144,6 +217,10 @@ export default function TestEntryPage({ params }: { params: Promise<{ code: stri
         <p className="text-sm text-muted-foreground">Starting test...</p>
       </div>
     );
+  }
+
+  if (accessInfo) {
+    return <AccessGate access={accessInfo} now={now} onBack={() => router.push('/')} />;
   }
 
   if (!test) {

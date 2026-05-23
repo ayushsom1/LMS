@@ -11,6 +11,8 @@ export default function CreateTestPage() {
   const [title, setTitle] = useState('');
   const [duration, setDuration] = useState(60);
   const [isActive, setIsActive] = useState(true);
+  const [startsAt, setStartsAt] = useState('');
+  const [endsAt, setEndsAt] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -21,7 +23,13 @@ export default function CreateTestPage() {
       const response = await fetch('/api/admin/tests', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, duration_minutes: duration, is_active: isActive }),
+        body: JSON.stringify({
+          title,
+          duration_minutes: duration,
+          is_active: isActive,
+          starts_at: startsAt ? new Date(startsAt).toISOString() : null,
+          ends_at: endsAt ? new Date(endsAt).toISOString() : null,
+        }),
       });
 
       if (response.ok) {
@@ -59,19 +67,21 @@ export default function CreateTestPage() {
       </header>
 
       {/* Main */}
-      <main className="max-w-md mx-auto px-4 py-12">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-lg bg-primary/10 border border-primary/30 mb-4">
-            <svg className="w-6 h-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <main className="max-w-2xl mx-auto px-4 py-6">
+        <div className="flex items-center gap-3 mb-5">
+          <div className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-primary/10 border border-primary/30">
+            <svg className="w-4 h-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
           </div>
-          <h1 className="text-xl font-semibold text-foreground">Create Test</h1>
-          <p className="text-sm text-muted-foreground mt-1">Set up your test details</p>
+          <div>
+            <h1 className="text-base font-semibold text-foreground">Create Test</h1>
+            <p className="text-xs text-muted-foreground">Set up your test details</p>
+          </div>
         </div>
 
-        <form onSubmit={handleCreate} className="space-y-4">
-          <div className="p-4 bg-card border border-border/50 rounded-lg space-y-4">
+        <form onSubmit={handleCreate} className="space-y-3">
+          <div className="p-4 bg-card border border-border/50 rounded-lg space-y-3">
             <div>
               <label className="block text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5 font-medium">
                 Test Title
@@ -86,7 +96,7 @@ export default function CreateTestPage() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5 font-medium">
                   Duration
@@ -111,39 +121,68 @@ export default function CreateTestPage() {
                 <button
                   type="button"
                   onClick={() => setIsActive(!isActive)}
-                  className={`w-full h-10 px-3 rounded text-xs font-medium transition-colors ${
+                  className={`btn-shine w-full h-10 px-3 rounded-md text-xs font-semibold transition-all border-2 ${
                     isActive
-                      ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
-                      : 'bg-secondary text-muted-foreground border border-border'
+                      ? 'bg-emerald-600 text-white border-emerald-700 shadow-md shadow-emerald-500/30 dark:bg-emerald-500 dark:border-emerald-400'
+                      : 'bg-zinc-100 text-zinc-700 border-zinc-300 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700 dark:hover:bg-zinc-700'
                   }`}
                 >
                   {isActive ? 'Active' : 'Inactive'}
                 </button>
               </div>
             </div>
+
+            <div className="grid grid-cols-2 gap-3 pt-1">
+              <div>
+                <label className="block text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5 font-medium">
+                  Available From <span className="opacity-60">(optional)</span>
+                </label>
+                <input
+                  type="datetime-local"
+                  value={startsAt}
+                  onChange={(e) => setStartsAt(e.target.value)}
+                  className="w-full h-10 px-3 bg-background border border-border rounded text-sm text-foreground focus:outline-none focus:border-primary/50 transition-colors"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5 font-medium">
+                  Available Until <span className="opacity-60">(optional)</span>
+                </label>
+                <input
+                  type="datetime-local"
+                  value={endsAt}
+                  onChange={(e) => setEndsAt(e.target.value)}
+                  className="w-full h-10 px-3 bg-background border border-border rounded text-sm text-foreground focus:outline-none focus:border-primary/50 transition-colors"
+                />
+              </div>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Leave blank for no schedule. Students can only start the test inside this window.
+            </p>
           </div>
 
-          <div className="p-3 bg-secondary/50 border border-border/30 rounded text-xs text-muted-foreground space-y-1">
-            <p>• An access code will be auto-generated</p>
-            <p>• Add questions after creating the test</p>
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-[11px] text-muted-foreground leading-relaxed">
+              <span className="text-foreground/70">•</span> Access code is auto-generated &nbsp;
+              <span className="text-foreground/70">•</span> Add questions after creating
+            </div>
+            <button
+              type="submit"
+              disabled={loading || !title.trim()}
+              className="btn-shine h-10 px-5 bg-primary hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground text-primary-foreground text-sm font-medium rounded transition-all flex items-center justify-center gap-2 whitespace-nowrap"
+            >
+              {loading ? (
+                <div className="w-4 h-4 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <>
+                  Create Test
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+                </>
+              )}
+            </button>
           </div>
-
-          <button
-            type="submit"
-            disabled={loading || !title.trim()}
-            className="w-full h-11 bg-primary hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground text-primary-foreground font-medium rounded transition-all flex items-center justify-center gap-2"
-          >
-            {loading ? (
-              <div className="w-4 h-4 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <>
-                Create Test
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                </svg>
-              </>
-            )}
-          </button>
         </form>
       </main>
     </div>

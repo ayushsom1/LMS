@@ -128,7 +128,7 @@ function LoginInner() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full h-11 mt-1 bg-primary hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground text-primary-foreground font-medium rounded-lg transition-all flex items-center justify-center gap-2"
+              className="btn-shine w-full h-11 mt-1 bg-primary hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground text-primary-foreground font-medium rounded-lg transition-all flex items-center justify-center gap-2"
             >
               {loading ? (
                 <div className="w-4 h-4 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin" />

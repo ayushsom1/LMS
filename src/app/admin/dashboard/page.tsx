@@ -5,6 +5,25 @@ import { useRouter } from 'next/navigation';
 import { Test } from '@/types';
 import { formatDuration } from '@/lib/utils';
 import ThemeToggle from '@/components/ThemeToggle';
+import Toast, { useToast } from '@/components/Toast';
+import { getTestAccessStatus } from '@/lib/test-access';
+
+function TestStatusBadge({ test }: { test: Pick<Test, 'is_active' | 'starts_at' | 'ends_at'> }) {
+  const { status } = getTestAccessStatus(test);
+  const styles: Record<typeof status, { dot: string; label: string; text: string }> = {
+    open: { dot: 'bg-emerald-500 dark:bg-emerald-400', label: 'Live', text: 'text-emerald-600 dark:text-emerald-400' },
+    not_started: { dot: 'bg-amber-500', label: 'Scheduled', text: 'text-amber-600 dark:text-amber-400' },
+    ended: { dot: 'bg-zinc-400', label: 'Ended', text: 'text-muted-foreground' },
+    inactive: { dot: 'bg-zinc-500', label: 'Off', text: 'text-muted-foreground' },
+  };
+  const s = styles[status];
+  return (
+    <span className={`inline-flex items-center gap-1 text-[10px] ${s.text} uppercase tracking-wider`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
+      {s.label}
+    </span>
+  );
+}
 
 interface TestWithStats extends Test {
   question_count: number;
@@ -16,6 +35,29 @@ export default function AdminDashboard() {
   const [tests, setTests] = useState<TestWithStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<TestWithStats | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const toast = useToast();
+
+  const handleDeleteTest = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      const response = await fetch(`/api/admin/tests/${deleteTarget.id}`, { method: 'DELETE' });
+      if (response.ok) {
+        setTests((prev) => prev.filter((t) => t.id !== deleteTarget.id));
+        toast.success(`Deleted "${deleteTarget.title}"`);
+        setDeleteTarget(null);
+      } else {
+        const data = await response.json().catch(() => ({}));
+        toast.error(data.error || 'Failed to delete test');
+      }
+    } catch {
+      toast.error('Failed to delete test');
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   useEffect(() => {
     fetchTests();
@@ -70,7 +112,7 @@ export default function AdminDashboard() {
             </button>
             <button
               onClick={() => router.push('/admin/tests/new')}
-              className="h-8 px-3 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-medium rounded flex items-center gap-1.5 transition-colors"
+              className="btn-shine h-8 px-3 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-medium rounded flex items-center gap-1.5 transition-colors"
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -157,14 +199,7 @@ export default function AdminDashboard() {
                   <span className="text-xs text-muted-foreground font-mono">{test.submission_count}</span>
                 </div>
                 <div className="col-span-1 flex justify-center">
-                  {test.is_active ? (
-                    <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400" />
-                      Live
-                    </span>
-                  ) : (
-                    <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Off</span>
-                  )}
+                  <TestStatusBadge test={test} />
                 </div>
                 <div className="col-span-2 flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
@@ -179,12 +214,65 @@ export default function AdminDashboard() {
                   >
                     Results
                   </button>
+                  <button
+                    onClick={() => setDeleteTarget(test)}
+                    className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-colors"
+                    title="Delete test"
+                  >
+                    Delete
+                  </button>
                 </div>
               </div>
             ))}
           </div>
         )}
       </main>
+
+      <Toast messages={toast.toasts} onRemove={toast.removeToast} />
+
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => !deleting && setDeleteTarget(null)}
+          />
+          <div className="relative w-full max-w-sm bg-background border border-border/50 rounded-lg shadow-2xl p-5">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="w-9 h-9 rounded-lg bg-destructive/10 flex items-center justify-center flex-shrink-0">
+                <svg className="w-4 h-4 text-destructive" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-sm font-semibold text-foreground">Delete test?</h3>
+                <p className="text-xs text-muted-foreground mt-1">
+                  &quot;{deleteTarget.title}&quot; and all of its questions
+                  {deleteTarget.submission_count > 0 && (
+                    <> plus <span className="text-destructive font-medium">{deleteTarget.submission_count}</span> submission{deleteTarget.submission_count === 1 ? '' : 's'}</>
+                  )}
+                  {' '}will be permanently removed. This cannot be undone.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                disabled={deleting}
+                className="flex-1 h-9 text-xs text-muted-foreground hover:text-foreground bg-secondary/50 hover:bg-secondary rounded transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteTest}
+                disabled={deleting}
+                className="flex-1 h-9 text-xs font-medium bg-destructive hover:bg-destructive/90 disabled:bg-muted disabled:text-muted-foreground text-white rounded transition-colors"
+              >
+                {deleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

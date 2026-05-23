@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { MCQOption, TestCase, Question } from '@/types';
 import Toast, { useToast } from '@/components/Toast';
+import { SUPPORTED_LANGUAGES, LANGUAGE_LABELS, Language, isLanguage } from '@/lib/piston';
 
 interface QuestionFormProps {
   open: boolean;
@@ -15,6 +16,7 @@ interface QuestionFormProps {
     options?: MCQOption[];
     correct_answer?: string;
     test_cases?: TestCase[];
+    allowed_languages?: Language[];
     points: number;
   }) => Promise<void>;
   initialQuestion?: Question | null;
@@ -45,6 +47,7 @@ export default function QuestionForm({ open, onClose, onSubmit, initialQuestion 
 
   // Coding state
   const [testCases, setTestCases] = useState<TestCase[]>(defaultTestCases());
+  const [allowedLanguages, setAllowedLanguages] = useState<Language[]>(['cpp']);
 
   const isEditing = !!initialQuestion;
 
@@ -87,6 +90,8 @@ export default function QuestionForm({ open, onClose, onSubmit, initialQuestion 
         } else {
           setTestCases(defaultTestCases());
         }
+        const langs = (initialQuestion.allowed_languages || []).filter(isLanguage);
+        setAllowedLanguages(langs.length > 0 ? langs : ['cpp']);
       }
     } else if (!initialQuestion && open) {
       // Reset for "Add" mode
@@ -97,6 +102,7 @@ export default function QuestionForm({ open, onClose, onSubmit, initialQuestion 
       setOptions(defaultOptions());
       setCorrectAnswer('');
       setTestCases(defaultTestCases());
+      setAllowedLanguages(['cpp']);
     }
   }, [initialQuestion, open]);
 
@@ -129,11 +135,16 @@ export default function QuestionForm({ open, onClose, onSubmit, initialQuestion 
           toast.warning('Please provide at least 1 test case');
           return;
         }
+        if (allowedLanguages.length === 0) {
+          toast.warning('Select at least one allowed language');
+          return;
+        }
         await onSubmit({
           type,
           title,
           description,
           test_cases: validTestCases,
+          allowed_languages: allowedLanguages,
           points,
         });
       }
@@ -186,7 +197,7 @@ export default function QuestionForm({ open, onClose, onSubmit, initialQuestion 
       />
 
       {/* Modal */}
-      <div className="relative w-full max-w-xl max-h-[85vh] overflow-hidden bg-background border border-border/50 rounded-lg shadow-2xl">
+      <div className="relative w-full max-w-3xl max-h-[95vh] overflow-hidden bg-background border border-border/50 rounded-lg shadow-2xl flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
           <h2 className="text-sm font-medium text-foreground">{isEditing ? 'Edit Question' : 'Add Question'}</h2>
@@ -202,46 +213,66 @@ export default function QuestionForm({ open, onClose, onSubmit, initialQuestion 
 
         {/* Type tabs */}
         <div className="flex border-b border-border/50">
-          <button
-            type="button"
-            onClick={() => setType('mcq')}
-            className={`flex-1 h-10 text-xs font-medium transition-colors ${
-              type === 'mcq'
-                ? 'text-primary border-b-2 border-primary bg-primary/5'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            Multiple Choice
-          </button>
-          <button
-            type="button"
-            onClick={() => setType('coding')}
-            className={`flex-1 h-10 text-xs font-medium transition-colors ${
-              type === 'coding'
-                ? 'text-purple-600 dark:text-purple-400 border-b-2 border-purple-500 bg-purple-500/5'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            Coding (C++)
-          </button>
+          {(!isEditing || type === 'mcq') && (
+            <button
+              type="button"
+              onClick={() => !isEditing && setType('mcq')}
+              disabled={isEditing}
+              className={`flex-1 h-10 text-xs font-medium transition-colors ${
+                type === 'mcq'
+                  ? 'text-primary border-b-2 border-primary bg-primary/5'
+                  : 'text-muted-foreground hover:text-foreground'
+              } ${isEditing ? 'cursor-default' : ''}`}
+            >
+              Multiple Choice
+            </button>
+          )}
+          {(!isEditing || type === 'coding') && (
+            <button
+              type="button"
+              onClick={() => !isEditing && setType('coding')}
+              disabled={isEditing}
+              className={`flex-1 h-10 text-xs font-medium transition-colors ${
+                type === 'coding'
+                  ? 'text-purple-600 dark:text-purple-400 border-b-2 border-purple-500 bg-purple-500/5'
+                  : 'text-muted-foreground hover:text-foreground'
+              } ${isEditing ? 'cursor-default' : ''}`}
+            >
+              Coding
+            </button>
+          )}
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="overflow-y-auto max-h-[calc(85vh-120px)]">
-          <div className="p-4 space-y-4">
-            {/* Title */}
-            <div>
-              <label className="block text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5 font-medium">
-                Question Title
-              </label>
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Enter question title"
-                className="w-full h-9 px-3 bg-card border border-border rounded text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 transition-colors"
-                required
-              />
+        <form onSubmit={handleSubmit} className="flex-1 min-h-0 flex flex-col overflow-hidden">
+          <div className="p-4 space-y-3 overflow-y-auto">
+            {/* Title + Points row */}
+            <div className="grid grid-cols-[1fr_auto] gap-3">
+              <div>
+                <label className="block text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5 font-medium">
+                  Question Title
+                </label>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Enter question title"
+                  className="w-full h-9 px-3 bg-card border border-border rounded text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 transition-colors"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5 font-medium">
+                  Points
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  value={points}
+                  onChange={(e) => setPoints(parseInt(e.target.value) || 10)}
+                  className="w-20 h-9 px-3 bg-card border border-border rounded text-sm text-foreground focus:outline-none focus:border-primary/50 transition-colors"
+                />
+              </div>
             </div>
 
             {/* Description */}
@@ -253,23 +284,9 @@ export default function QuestionForm({ open, onClose, onSubmit, initialQuestion 
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Enter detailed description..."
-                rows={3}
+                rows={2}
                 className="w-full px-3 py-2 bg-card border border-border rounded text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 transition-colors resize-none"
                 required
-              />
-            </div>
-
-            {/* Points */}
-            <div>
-              <label className="block text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5 font-medium">
-                Points
-              </label>
-              <input
-                type="number"
-                min={1}
-                value={points}
-                onChange={(e) => setPoints(parseInt(e.target.value) || 10)}
-                className="w-24 h-9 px-3 bg-card border border-border rounded text-sm text-foreground focus:outline-none focus:border-primary/50 transition-colors"
               />
             </div>
 
@@ -324,6 +341,38 @@ export default function QuestionForm({ open, onClose, onSubmit, initialQuestion 
                   >
                     + Add option
                   </button>
+                </div>
+              </div>
+            )}
+
+            {/* Allowed languages (coding only) */}
+            {type === 'coding' && (
+              <div>
+                <label className="block text-[10px] text-muted-foreground uppercase tracking-wider mb-2 font-medium">
+                  Allowed Languages
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {SUPPORTED_LANGUAGES.map((lang) => {
+                    const active = allowedLanguages.includes(lang);
+                    return (
+                      <button
+                        key={lang}
+                        type="button"
+                        onClick={() =>
+                          setAllowedLanguages((prev) =>
+                            prev.includes(lang) ? prev.filter((l) => l !== lang) : [...prev, lang]
+                          )
+                        }
+                        className={`btn-shine h-9 px-4 text-xs font-semibold rounded-md border-2 transition-all ${
+                          active
+                            ? 'bg-purple-600 text-white border-purple-700 shadow-md shadow-purple-500/30 dark:bg-purple-500 dark:border-purple-400 dark:shadow-purple-500/20'
+                            : 'bg-zinc-100 text-zinc-700 border-zinc-300 hover:bg-zinc-200 hover:border-zinc-400 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700 dark:hover:bg-zinc-700 dark:hover:border-zinc-600'
+                        }`}
+                      >
+                        {LANGUAGE_LABELS[lang]}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -397,7 +446,7 @@ export default function QuestionForm({ open, onClose, onSubmit, initialQuestion 
           </div>
 
           {/* Footer */}
-          <div className="flex gap-2 px-4 py-3 border-t border-border/50 bg-card/30">
+          <div className="flex gap-2 px-4 py-3 border-t border-border/50 bg-card/30 flex-shrink-0">
             <button
               type="button"
               onClick={onClose}
@@ -408,7 +457,7 @@ export default function QuestionForm({ open, onClose, onSubmit, initialQuestion 
             <button
               type="submit"
               disabled={loading}
-              className={`flex-1 h-9 text-xs font-medium rounded transition-colors ${
+              className={`btn-shine flex-1 h-9 text-xs font-medium rounded transition-colors ${
                 type === 'mcq'
                   ? 'bg-primary hover:bg-primary/90 text-primary-foreground'
                   : 'bg-purple-600 hover:bg-purple-500 dark:bg-purple-500 dark:hover:bg-purple-400 text-white dark:text-zinc-900'

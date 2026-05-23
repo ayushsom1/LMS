@@ -1,7 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
-import { evaluateCode } from '@/lib/piston';
+import { evaluateCode, isLanguage, Language } from '@/lib/piston';
 import { Question, TestCase } from '@/types';
+
+function extractCoding(answer: unknown): { code: string; language: Language } | null {
+  if (!answer) return null;
+  if (typeof answer === 'string') {
+    return answer.trim() ? { code: answer, language: 'cpp' } : null;
+  }
+  if (typeof answer === 'object' && 'code' in answer) {
+    const a = answer as { code?: unknown; language?: unknown };
+    if (typeof a.code !== 'string' || !a.code.trim()) return null;
+    const language = isLanguage(a.language) ? a.language : 'cpp';
+    return { code: a.code, language };
+  }
+  return null;
+}
 
 export async function POST(
   request: NextRequest,
@@ -100,17 +114,16 @@ export async function POST(
     // parallel inside evaluateCode(), so this parallelizes across questions too
     const codingResults = await Promise.all(
       codingQuestions.map(async (question: Question) => {
-        const studentCode = answers[question.id];
-        if (!studentCode || !question.test_cases || question.test_cases.length === 0) return 0;
+        const submitted = extractCoding(answers[question.id]);
+        if (!submitted || !question.test_cases || question.test_cases.length === 0) return 0;
         try {
           const testCases = question.test_cases as TestCase[];
           const pointsPerTestCase = Math.floor(question.points / testCases.length);
-          const result = await evaluateCode(studentCode, testCases, question.id, pointsPerTestCase);
+          const result = await evaluateCode(submitted.code, testCases, question.id, pointsPerTestCase, submitted.language);
           return result.score;
         } catch (error) {
           console.error('Failed to evaluate code for question:', question.id, error);
-          // Partial credit for a genuine submission attempt
-          return studentCode.trim().length > 50 ? Math.floor(question.points * 0.25) : 0;
+          return submitted.code.trim().length > 50 ? Math.floor(question.points * 0.25) : 0;
         }
       })
     );

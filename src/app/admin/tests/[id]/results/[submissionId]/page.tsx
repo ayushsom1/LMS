@@ -2,12 +2,37 @@
 
 import { useEffect, useState, use, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Test, Question, Submission, MCQOption, TestCase } from '@/types';
+import { Test, Question, Submission, MCQOption, TestCase, SubmissionAnswer } from '@/types';
 import { formatDate } from '@/lib/utils';
 import ThemeToggle from '@/components/ThemeToggle';
 
-interface DetailedSubmission extends Submission {
-  answers: Record<string, string>;
+type StoredAnswer = SubmissionAnswer | undefined;
+
+type DetailedSubmission = Submission;
+
+function getCodeString(answer: StoredAnswer): string {
+  if (!answer) return '';
+  if (typeof answer === 'string') return answer;
+  if (typeof answer === 'object' && 'code' in answer && typeof answer.code === 'string') return answer.code;
+  return '';
+}
+
+function getCodeLanguage(answer: StoredAnswer): string | null {
+  if (answer && typeof answer === 'object' && 'language' in answer && typeof answer.language === 'string') {
+    return answer.language;
+  }
+  return null;
+}
+
+function getMcqSelection(answer: StoredAnswer): string | null {
+  return typeof answer === 'string' && answer ? answer : null;
+}
+
+function isAnswerAttempted(answer: StoredAnswer): boolean {
+  if (!answer) return false;
+  if (typeof answer === 'string') return answer.length > 0;
+  if (typeof answer === 'object' && 'code' in answer) return typeof answer.code === 'string' && answer.code.length > 0;
+  return false;
 }
 
 export default function SubmissionDetailPage({
@@ -77,11 +102,12 @@ export default function SubmissionDetailPage({
   const mcqQuestions = questions.filter((q) => q.type === 'mcq');
   const codingQuestions = questions.filter((q) => q.type === 'coding');
 
-  const mcqCorrect = mcqQuestions.filter(
-    (q) => submission.answers[q.id] && isCorrectMCQ(q, submission.answers[q.id])
-  ).length;
-  const mcqAttempted = mcqQuestions.filter((q) => submission.answers[q.id]).length;
-  const codingAttempted = codingQuestions.filter((q) => submission.answers[q.id]).length;
+  const mcqCorrect = mcqQuestions.filter((q) => {
+    const sel = getMcqSelection(submission.answers[q.id]);
+    return sel != null && isCorrectMCQ(q, sel);
+  }).length;
+  const mcqAttempted = mcqQuestions.filter((q) => isAnswerAttempted(submission.answers[q.id])).length;
+  const codingAttempted = codingQuestions.filter((q) => isAnswerAttempted(submission.answers[q.id])).length;
 
   return (
     <div className="min-h-screen bg-background">
@@ -189,9 +215,12 @@ export default function SubmissionDetailPage({
             .sort((a, b) => a.order_index - b.order_index)
             .map((question, index) => {
               const answer = submission.answers[question.id];
-              const isAttempted = !!answer;
+              const isAttempted = isAnswerAttempted(answer);
               const isMCQ = question.type === 'mcq';
-              const isCorrect = isMCQ && answer ? isCorrectMCQ(question, answer) : null;
+              const mcqAnswerId = getMcqSelection(answer);
+              const codeText = getCodeString(answer);
+              const codeLang = getCodeLanguage(answer);
+              const isCorrect = isMCQ && mcqAnswerId ? isCorrectMCQ(question, mcqAnswerId) : null;
 
               return (
                 <div
@@ -267,7 +296,7 @@ export default function SubmissionDetailPage({
                             ? { id: rawOption, text: rawOption }
                             : { id: rawOption.id ?? String(optionIndex), text: rawOption.text };
 
-                        const isSelected = answer != null && answer === option.id;
+                        const isSelected = mcqAnswerId != null && mcqAnswerId === option.id;
                         const isCorrectOption =
                           question.correct_answer != null && option.id === question.correct_answer;
 
@@ -376,11 +405,11 @@ export default function SubmissionDetailPage({
                       {/* Student's Code */}
                       <div>
                         <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">
-                          Student&apos;s Code
+                          Student&apos;s Code{codeLang ? <span className="ml-2 normal-case text-muted-foreground/70">({codeLang})</span> : null}
                         </p>
-                        {answer ? (
+                        {codeText ? (
                           <pre className="p-3 bg-zinc-900 dark:bg-zinc-950 border border-border/50 rounded-lg text-xs text-zinc-100 font-mono overflow-x-auto max-h-64 overflow-y-auto">
-                            {answer}
+                            {codeText}
                           </pre>
                         ) : (
                           <p className="text-xs text-muted-foreground italic p-3 bg-secondary/30 rounded-lg">

@@ -4,7 +4,26 @@ import { useEffect, useState, useCallback, use, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import CodeEditor from '@/components/CodeEditor';
 import Toast, { useToast } from '@/components/Toast';
-import { Test, Question, TestCase } from '@/types';
+import { Test, Question, TestCase, SubmissionAnswer } from '@/types';
+import { Language, LANGUAGE_LABELS, LANGUAGE_STARTER_CODE, isLanguage } from '@/lib/piston';
+
+type ResolvedCodingAnswer = { code: string; language: Language };
+
+function getCodingAnswer(answer: SubmissionAnswer | undefined, defaultLang: Language): ResolvedCodingAnswer {
+  if (answer && typeof answer === 'object' && 'code' in answer) {
+    const lang = isLanguage(answer.language) ? answer.language : defaultLang;
+    return { code: answer.code, language: lang };
+  }
+  if (typeof answer === 'string' && answer) {
+    return { code: answer, language: defaultLang };
+  }
+  return { code: '', language: defaultLang };
+}
+
+function pickDefaultLanguage(question: Question): Language {
+  const allowed = (question.allowed_languages || []).filter(isLanguage);
+  return allowed[0] || 'cpp';
+}
 
 interface RunResult {
   id: string;
@@ -20,7 +39,7 @@ export default function TakeTestPage({ params }: { params: Promise<{ code: strin
   const router = useRouter();
   const [test, setTest] = useState<Test | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [answers, setAnswers] = useState<Record<string, SubmissionAnswer>>({});
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -282,15 +301,15 @@ export default function TakeTestPage({ params }: { params: Promise<{ code: strin
     }
   }, [code, answers, submitting, submitted, toast]);
 
-  const handleRunCode = async (questionId: string, testCases: TestCase[]) => {
-    const studentCode = answers[questionId];
-    if (!studentCode) {
+  const handleRunCode = async (question: Question, testCases: TestCase[]) => {
+    const submitted = getCodingAnswer(answers[question.id], pickDefaultLanguage(question));
+    if (!submitted.code.trim()) {
       toast.warning('Please write some code first');
       return;
     }
 
     setRunning(true);
-    setRunResults((prev) => ({ ...prev, [questionId]: [] }));
+    setRunResults((prev) => ({ ...prev, [question.id]: [] }));
 
     try {
       const visibleTestCases = testCases.filter((tc) => !tc.is_hidden);
@@ -299,15 +318,15 @@ export default function TakeTestPage({ params }: { params: Promise<{ code: strin
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          code: studentCode,
+          code: submitted.code,
           testCases: visibleTestCases,
-          language: 'cpp',
+          language: submitted.language,
         }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        setRunResults((prev) => ({ ...prev, [questionId]: data.results }));
+        setRunResults((prev) => ({ ...prev, [question.id]: data.results }));
       } else {
         const error = await response.json();
         toast.error(error.error || 'Failed to run code');
@@ -319,11 +338,23 @@ export default function TakeTestPage({ params }: { params: Promise<{ code: strin
     }
   };
 
-  const handleAnswerChange = (questionId: string, answer: string) => {
+  const handleAnswerChange = (questionId: string, answer: SubmissionAnswer) => {
     setAnswers((prev) => ({ ...prev, [questionId]: answer }));
     if (runResults[questionId]) {
       setRunResults((prev) => ({ ...prev, [questionId]: [] }));
     }
+  };
+
+  const handleCodeChange = (question: Question, code: string) => {
+    const current = getCodingAnswer(answers[question.id], pickDefaultLanguage(question));
+    handleAnswerChange(question.id, { code, language: current.language });
+  };
+
+  const handleLanguageChange = (question: Question, language: Language) => {
+    const current = getCodingAnswer(answers[question.id], pickDefaultLanguage(question));
+    const isStarter = !current.code.trim() || current.code === LANGUAGE_STARTER_CODE[current.language];
+    const nextCode = isStarter ? LANGUAGE_STARTER_CODE[language] : current.code;
+    handleAnswerChange(question.id, { code: nextCode, language });
   };
 
   const formatTime = (ms: number) => {
@@ -607,12 +638,29 @@ export default function TakeTestPage({ params }: { params: Promise<{ code: strin
               )}
 
               {/* Code Editor */}
+              {(() => {
+                const allowed = (currentQuestion.allowed_languages || []).filter(isLanguage);
+                const langs: Language[] = allowed.length ? allowed : ['cpp'];
+                const current = getCodingAnswer(answers[currentQuestion.id], langs[0]);
+                const editorValue = current.code || LANGUAGE_STARTER_CODE[current.language];
+                return (
               <div>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider">Your Solution (C++)</p>
+                <div className="flex items-center justify-between mb-2 gap-2">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider">Your Solution</p>
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={current.language}
+                      onChange={(e) => handleLanguageChange(currentQuestion, e.target.value as Language)}
+                      disabled={langs.length === 1}
+                      className="h-7 px-2 bg-card border border-border rounded text-xs text-foreground focus:outline-none focus:border-primary/50 disabled:opacity-60"
+                    >
+                      {langs.map((l) => (
+                        <option key={l} value={l}>{LANGUAGE_LABELS[l]}</option>
+                      ))}
+                    </select>
                   <button
-                    onClick={() => handleRunCode(currentQuestion.id, currentQuestion.test_cases || [])}
-                    disabled={running || !answers[currentQuestion.id]}
+                    onClick={() => handleRunCode(currentQuestion, currentQuestion.test_cases || [])}
+                    disabled={running || !current.code.trim()}
                     className="h-7 px-3 bg-purple-600 hover:bg-purple-500 dark:bg-purple-500 dark:hover:bg-purple-400 disabled:bg-muted disabled:text-muted-foreground text-white dark:text-zinc-900 text-xs font-medium rounded transition-colors flex items-center gap-1.5"
                   >
                     {running ? (
@@ -630,13 +678,17 @@ export default function TakeTestPage({ params }: { params: Promise<{ code: strin
                       </>
                     )}
                   </button>
+                  </div>
                 </div>
                 <CodeEditor
-                  value={answers[currentQuestion.id] || '#include <iostream>\nusing namespace std;\n\nint main() {\n    // Your code here\n    \n    return 0;\n}'}
-                  onChange={(code) => handleAnswerChange(currentQuestion.id, code)}
+                  value={editorValue}
+                  language={current.language}
+                  onChange={(code) => handleCodeChange(currentQuestion, code)}
                   height="350px"
                 />
               </div>
+                );
+              })()}
 
               {/* Run Results Summary */}
               {currentRunResults.length > 0 && (

@@ -4,7 +4,18 @@ export interface Test {
   duration_minutes: number;
   access_code: string;
   is_active: boolean;
+  starts_at: string | null;
+  ends_at: string | null;
   created_at: string;
+}
+
+export type TestAccessStatus = 'open' | 'not_started' | 'ended' | 'inactive';
+
+export interface TestAccessInfo {
+  status: TestAccessStatus;
+  message: string;
+  starts_at: string | null;
+  ends_at: string | null;
 }
 
 export interface MCQOption {
@@ -28,9 +39,17 @@ export interface Question {
   options: MCQOption[] | null;
   correct_answer: string | null;
   test_cases: TestCase[] | null;
+  allowed_languages: string[];
   points: number;
   order_index: number;
 }
+
+export interface CodingAnswer {
+  code: string;
+  language: string;
+}
+
+export type SubmissionAnswer = string | CodingAnswer;
 
 export interface Violation {
   type: 'tab_switch' | 'window_blur' | 'fullscreen_exit' | 'visibility_hidden';
@@ -43,7 +62,7 @@ export interface Submission {
   test_id: string;
   student_name: string;
   student_email: string;
-  answers: Record<string, string>;
+  answers: Record<string, SubmissionAnswer>;
   mcq_score: number;
   coding_score: number;
   total_score: number;

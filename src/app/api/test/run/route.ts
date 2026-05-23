@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { executeCode, Language } from '@/lib/piston';
+import { executeCode, isLanguage } from '@/lib/piston';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { code, testCases, language = 'cpp' } = body;
+    const { code, testCases, language: rawLanguage = 'cpp' } = body;
+    const language = isLanguage(rawLanguage) ? rawLanguage : 'cpp';
 
     if (!code) {
       return NextResponse.json({ error: 'Code is required' }, { status: 400 });
@@ -17,7 +18,7 @@ export async function POST(request: NextRequest) {
     // Run all test cases in parallel
     const resultPromises = testCases.map(async (testCase: { id: string; input: string; expected_output: string }) => {
       try {
-        const result = await executeCode(code, testCase.input || '', language as Language);
+        const result = await executeCode(code, testCase.input || '', language);
 
         if (result.compileError) {
           return {

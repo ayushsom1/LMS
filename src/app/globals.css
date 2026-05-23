@@ -226,3 +226,38 @@
 html {
   transition: background-color 0.2s ease, color 0.2s ease;
 }
+
+/* Button hover shine (dark mode only) — opt-in via `.btn-shine`.
+   Adds a glossy white radial highlight from the top-left corner on hover.
+   Uses screen blend so the sheen only ADDS light and never obscures text. */
+.btn-shine {
+  position: relative;
+  isolation: isolate;
+}
+
+.dark .btn-shine::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: radial-gradient(
+    140% 110% at 0% 0%,
+    rgba(255, 255, 255, 0.6) 0%,
+    rgba(255, 255, 255, 0.3) 20%,
+    rgba(255, 255, 255, 0.1) 42%,
+    rgba(255, 255, 255, 0) 65%
+  );
+  mix-blend-mode: screen;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  z-index: 2;
+}
+
+.dark .btn-shine:hover::before {
+  opacity: 1;
+}
+
+.dark .btn-shine:disabled::before {
+  opacity: 0 !important;
+}

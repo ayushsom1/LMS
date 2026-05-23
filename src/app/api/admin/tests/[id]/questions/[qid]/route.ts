@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
+import { sanitizeLanguages } from '@/lib/question-utils';
 
 export async function PUT(
   request: NextRequest,
@@ -16,6 +17,7 @@ export async function PUT(
       options,
       correct_answer,
       test_cases,
+      allowed_languages,
       points,
       order_index,
     } = body;
@@ -29,6 +31,7 @@ export async function PUT(
         options: type === 'mcq' ? options : null,
         correct_answer: type === 'mcq' ? correct_answer : null,
         test_cases: type === 'coding' ? test_cases : null,
+        allowed_languages: type === 'coding' ? sanitizeLanguages(allowed_languages) : ['cpp'],
         points,
         order_index,
       })
