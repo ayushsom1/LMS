@@ -12,6 +12,8 @@ export default function CreateTestPage() {
   const [title, setTitle] = useState('');
   const [duration, setDuration] = useState(60);
   const [isActive, setIsActive] = useState(true);
+  const [startsAt, setStartsAt] = useState('');
+  const [endsAt, setEndsAt] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -22,7 +24,13 @@ export default function CreateTestPage() {
       const response = await fetch('/api/admin/tests', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, duration_minutes: duration, is_active: isActive }),
+        body: JSON.stringify({
+          title,
+          duration_minutes: duration,
+          is_active: isActive,
+          starts_at: startsAt ? new Date(startsAt).toISOString() : null,
+          ends_at: endsAt ? new Date(endsAt).toISOString() : null,
+        }),
       });
 
       if (response.ok) {
@@ -120,6 +128,38 @@ export default function CreateTestPage() {
                   <Toggle on={isActive} />
                 </button>
               </Field>
+            </div>
+
+            <div className="pt-1 border-t border-border/60">
+              <div className="flex items-center gap-2 mt-4 mb-3">
+                <svg className="w-4 h-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <span className="text-xs font-medium text-foreground">Scheduling window</span>
+                <span className="text-[10px] text-muted-foreground font-normal">(optional)</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <Field label="Available from">
+                  <input
+                    type="datetime-local"
+                    value={startsAt}
+                    onChange={(e) => setStartsAt(e.target.value)}
+                    className="w-full h-10 px-3 bg-background border border-border rounded-md text-sm text-foreground focus-ring transition-colors"
+                  />
+                </Field>
+                <Field label="Available until">
+                  <input
+                    type="datetime-local"
+                    value={endsAt}
+                    min={startsAt || undefined}
+                    onChange={(e) => setEndsAt(e.target.value)}
+                    className="w-full h-10 px-3 bg-background border border-border rounded-md text-sm text-foreground focus-ring transition-colors"
+                  />
+                </Field>
+              </div>
+              <p className="mt-2.5 text-[11px] text-muted-foreground">
+                Leave blank for no schedule. Students can only start the test inside this window.
+              </p>
             </div>
           </div>
 
