@@ -96,7 +96,7 @@ export default function CreateTestPage() {
               />
             </Field>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <div className="sm:max-w-[14rem]">
               <Field label="Duration" hint="Between 5 and 300 minutes.">
                 <div className="relative">
                   <input
@@ -108,27 +108,31 @@ export default function CreateTestPage() {
                     className="w-full h-10 px-3 pr-14 bg-background border border-border rounded-md text-sm text-foreground tabular-nums focus-ring transition-colors"
                     required
                   />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-mono uppercase tracking-wider">min</span>
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-mono uppercase tracking-wider pointer-events-none">min</span>
                 </div>
               </Field>
-              <Field label="Visibility" hint="You can flip this anytime.">
-                <button
-                  type="button"
-                  onClick={() => setIsActive(!isActive)}
-                  className={`w-full h-10 px-3 rounded-md text-sm font-medium transition-all flex items-center justify-between border ${
-                    isActive
-                      ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30'
-                      : 'bg-secondary text-muted-foreground border-border'
-                  }`}
-                >
-                  <span className="inline-flex items-center gap-2">
-                    {isActive && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />}
-                    {isActive ? 'Active — accepting submissions' : 'Inactive'}
-                  </span>
-                  <Toggle on={isActive} />
-                </button>
-              </Field>
             </div>
+
+            {/* Visibility — full-width settings row, no wrapping */}
+            <button
+              type="button"
+              onClick={() => setIsActive(!isActive)}
+              className="w-full flex items-center justify-between gap-4 rounded-md border border-border bg-background px-4 py-3 hover:border-border/80 transition-colors text-left"
+              aria-pressed={isActive}
+            >
+              <span className="min-w-0">
+                <span className="flex items-center gap-2">
+                  <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-500 dark:bg-emerald-400 pulse-slow' : 'bg-muted-foreground/40'}`} />
+                  <span className="text-sm font-medium text-foreground">
+                    {isActive ? 'Active' : 'Inactive'}
+                  </span>
+                </span>
+                <span className="block text-[11px] text-muted-foreground mt-0.5">
+                  {isActive ? 'Accepting submissions. You can flip this anytime.' : 'Not accepting submissions yet.'}
+                </span>
+              </span>
+              <Toggle on={isActive} />
+            </button>
 
             <div className="pt-1 border-t border-border/60">
               <div className="flex items-center gap-2 mt-4 mb-3">
