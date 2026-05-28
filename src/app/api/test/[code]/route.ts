@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { cacheGet, cacheSet } from '@/lib/redis';
+import { getTestAccessStatus } from '@/lib/test-access';
 
 // Cache TTL: 5 minutes — test content doesn't change during an active exam
 const CACHE_TTL = 300;
@@ -15,8 +16,12 @@ export async function GET(
     const cacheKey = `test:${upperCode}`;
 
     // Serve from cache if available — critical for 2000 students hitting same test at start
-    const cached = await cacheGet<{ test: unknown; questions: unknown[] }>(cacheKey);
+    const cached = await cacheGet<{ test: { is_active: boolean; starts_at: string | null; ends_at: string | null }; questions: unknown[] }>(cacheKey);
     if (cached) {
+      const access = getTestAccessStatus(cached.test);
+      if (access.status !== 'open') {
+        return NextResponse.json({ error: access.message, access }, { status: 403 });
+      }
       return NextResponse.json(cached);
     }
 
@@ -29,7 +34,7 @@ export async function GET(
         .single(),
       supabaseAdmin
         .from('questions')
-        .select('id, test_id, type, title, description, options, test_cases, points, order_index')
+        .select('id, test_id, type, title, description, options, test_cases, allowed_languages, points, order_index')
         .order('order_index', { ascending: true }),
     ]);
 
@@ -37,6 +42,11 @@ export async function GET(
 
     if (testError || !test) {
       return NextResponse.json({ error: 'Test not found' }, { status: 404 });
+    }
+
+    const access = getTestAccessStatus(test);
+    if (access.status !== 'open') {
+      return NextResponse.json({ error: access.message, access }, { status: 403 });
     }
 
     if (questionsResult.error) {

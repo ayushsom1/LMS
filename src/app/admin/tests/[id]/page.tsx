@@ -6,21 +6,13 @@ import QuestionForm from '@/components/admin/QuestionForm';
 import ThemeToggle from '@/components/ThemeToggle';
 import Toast, { useToast } from '@/components/Toast';
 import { Test, Question, MCQOption, TestCase, Batch } from '@/types';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog';
-import { cn } from '@/lib/utils';
-import { ArrowLeft, Check, Link2, Mail, Pencil, Plus, Trash2, Users } from 'lucide-react';
+
+function toDateTimeLocal(iso: string | null): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 
 export default function EditTestPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -38,6 +30,8 @@ export default function EditTestPage({ params }: { params: Promise<{ id: string 
   const [title, setTitle] = useState('');
   const [duration, setDuration] = useState(60);
   const [isActive, setIsActive] = useState(true);
+  const [startsAt, setStartsAt] = useState('');
+  const [endsAt, setEndsAt] = useState('');
 
   // Batch state
   const [batches, setBatches] = useState<Batch[]>([]);
@@ -58,6 +52,8 @@ export default function EditTestPage({ params }: { params: Promise<{ id: string 
         setTitle(testData.title);
         setDuration(testData.duration_minutes);
         setIsActive(testData.is_active);
+        setStartsAt(toDateTimeLocal(testData.starts_at));
+        setEndsAt(toDateTimeLocal(testData.ends_at));
       }
 
       if (questionsRes.ok) {
@@ -94,7 +90,13 @@ export default function EditTestPage({ params }: { params: Promise<{ id: string 
       const response = await fetch(`/api/admin/tests/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, duration_minutes: duration, is_active: isActive }),
+        body: JSON.stringify({
+          title,
+          duration_minutes: duration,
+          is_active: isActive,
+          starts_at: startsAt ? new Date(startsAt).toISOString() : null,
+          ends_at: endsAt ? new Date(endsAt).toISOString() : null,
+        }),
       });
       if (response.ok) {
         const updated = await response.json();
@@ -112,6 +114,7 @@ export default function EditTestPage({ params }: { params: Promise<{ id: string 
     options?: MCQOption[];
     correct_answer?: string;
     test_cases?: TestCase[];
+    allowed_languages?: string[];
     points: number;
   }) => {
     if (editingQuestion) {
@@ -136,6 +139,32 @@ export default function EditTestPage({ params }: { params: Promise<{ id: string 
       }
     }
     setEditingQuestion(null);
+  };
+
+  const handleExcelUpload = async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const response = await fetch(`/api/admin/tests/${id}/questions/bulk`, {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await response.json();
+      if (response.ok) {
+        toast.success(`Imported ${data.inserted} question${data.inserted === 1 ? '' : 's'}`);
+        fetchTestData();
+      } else if (Array.isArray(data.errors) && data.errors.length > 0) {
+        const preview = data.errors
+          .slice(0, 3)
+          .map((e: { row: number; message: string }) => `Row ${e.row}: ${e.message}`)
+          .join(' • ');
+        toast.error(`${data.error}. ${preview}${data.errors.length > 3 ? ` (+${data.errors.length - 3} more)` : ''}`, 10000);
+      } else {
+        toast.error(data.error || 'Upload failed');
+      }
+    } catch {
+      toast.error('Upload failed');
+    }
   };
 
   const handleDeleteQuestion = async (questionId: string) => {
@@ -193,26 +222,8 @@ export default function EditTestPage({ params }: { params: Promise<{ id: string 
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background">
-        <header className="sticky top-0 z-20 bg-background/80 backdrop-blur-sm border-b border-border/50">
-          <div className="max-w-6xl mx-auto px-4 h-14 flex items-center">
-            <Skeleton className="h-5 w-24" />
-          </div>
-        </header>
-        <main className="max-w-6xl mx-auto px-4 py-6">
-          <div className="grid grid-cols-12 gap-6">
-            <div className="col-span-4 space-y-4">
-              <Skeleton className="h-48 w-full rounded-lg" />
-              <Skeleton className="h-20 w-full rounded-lg" />
-            </div>
-            <div className="col-span-8 space-y-2">
-              <Skeleton className="h-8 w-40" />
-              {Array.from({ length: 4 }).map((_, i) => (
-                <Skeleton key={i} className="h-16 w-full rounded-lg" />
-              ))}
-            </div>
-          </div>
-        </main>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-5 h-5 border-2 border-border border-t-primary rounded-full animate-spin" />
       </div>
     );
   }
@@ -233,43 +244,53 @@ export default function EditTestPage({ params }: { params: Promise<{ id: string 
       <header className="sticky top-0 z-20 bg-background/80 backdrop-blur-sm border-b border-border/50">
         <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="icon-sm"
+            <button
               onClick={() => router.push('/admin/dashboard')}
-              className="text-muted-foreground"
-              aria-label="Back to dashboard"
+              className="text-muted-foreground hover:text-foreground transition-colors"
             >
-              <ArrowLeft className="w-4 h-4" />
-            </Button>
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+            </button>
             <span className="text-sm font-medium text-foreground">Edit Test</span>
           </div>
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            <Button variant="secondary" size="sm" onClick={copyLink}>
+            <button
+              onClick={copyLink}
+              className="h-8 px-3 flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground bg-secondary/50 hover:bg-secondary rounded transition-colors"
+            >
               {copied ? (
                 <>
-                  <Check className="w-3.5 h-3.5 text-emerald-500" />
+                  <svg className="w-3.5 h-3.5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
                   Copied
                 </>
               ) : (
                 <>
-                  <Link2 className="w-3.5 h-3.5" />
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                  </svg>
                   Copy Link
                 </>
               )}
-            </Button>
-            <Button
-              size="sm"
+            </button>
+            <button
               onClick={() => setShowBatchModal(true)}
-              className="bg-emerald-600 hover:bg-emerald-500 dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white dark:text-zinc-900"
+              className="btn-shine h-8 px-3 flex items-center gap-1.5 text-xs text-white dark:text-zinc-900 bg-emerald-600 hover:bg-emerald-500 dark:bg-emerald-500 dark:hover:bg-emerald-400 rounded transition-colors"
             >
-              <Mail className="w-3.5 h-3.5" />
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
               Send to Batches
-            </Button>
-            <Button variant="secondary" size="sm" onClick={() => router.push(`/admin/tests/${id}/results`)}>
+            </button>
+            <button
+              onClick={() => router.push(`/admin/tests/${id}/results`)}
+              className="h-8 px-3 text-xs text-muted-foreground hover:text-foreground bg-secondary/50 hover:bg-secondary rounded transition-colors"
+            >
               Results
-            </Button>
+            </button>
           </div>
         </div>
       </header>
@@ -280,61 +301,101 @@ export default function EditTestPage({ params }: { params: Promise<{ id: string 
           {/* Left column - Test settings */}
           <div className="col-span-4 space-y-4">
             {/* Settings panel */}
-            <Card>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Settings</h2>
-                  <Button size="xs" onClick={handleSave} disabled={saving}>
-                    {saving ? 'Saving...' : 'Save'}
-                  </Button>
-                </div>
+            <div className="p-4 bg-card border border-border/50 rounded-lg space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Settings</h2>
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="btn-shine h-7 px-3 bg-primary hover:bg-primary/90 disabled:bg-muted text-primary-foreground text-xs font-medium rounded transition-colors"
+                >
+                  {saving ? 'Saving...' : 'Save'}
+                </button>
+              </div>
 
-                <div className="space-y-1.5">
-                  <Label htmlFor="edit-title">Title</Label>
-                  <Input
-                    id="edit-title"
-                    type="text"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                  />
-                </div>
+              <div>
+                <label className="block text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5">Title</label>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className="w-full h-9 px-3 bg-background border border-border rounded text-sm text-foreground focus:outline-none focus:border-primary/50 transition-colors"
+                />
+              </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="edit-duration">Duration</Label>
-                    <div className="relative">
-                      <Input
-                        id="edit-duration"
-                        type="number"
-                        value={duration}
-                        onChange={(e) => setDuration(parseInt(e.target.value) || 60)}
-                        className="pr-12"
-                      />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">min</span>
-                    </div>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Status</Label>
-                    <Button
-                      type="button"
-                      onClick={() => setIsActive(!isActive)}
-                      variant={isActive ? 'outline' : 'secondary'}
-                      className={isActive ? 'w-full border-emerald-500/30 bg-emerald-500/20 text-emerald-600 hover:bg-emerald-500/30 dark:text-emerald-400' : 'w-full'}
-                    >
-                      {isActive ? 'Active' : 'Inactive'}
-                    </Button>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5">Duration</label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      value={duration}
+                      onChange={(e) => setDuration(parseInt(e.target.value) || 60)}
+                      className="w-full h-9 px-3 bg-background border border-border rounded text-sm text-foreground focus:outline-none focus:border-primary/50 transition-colors"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">min</span>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+                <div>
+                  <label className="block text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5">Status</label>
+                  <button
+                    onClick={() => setIsActive(!isActive)}
+                    className={`btn-shine w-full h-9 px-3 rounded-md text-xs font-semibold transition-all border-2 ${
+                      isActive
+                        ? 'bg-emerald-600 text-white border-emerald-700 shadow-md shadow-emerald-500/30 dark:bg-emerald-500 dark:border-emerald-400'
+                        : 'bg-zinc-100 text-zinc-700 border-zinc-300 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700 dark:hover:bg-zinc-700'
+                    }`}
+                  >
+                    {isActive ? 'Active' : 'Inactive'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Schedule */}
+            <div className="p-4 bg-card border border-border/50 rounded-lg space-y-3">
+              <h2 className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Schedule</h2>
+              <div>
+                <label className="block text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5">
+                  Available From
+                </label>
+                <input
+                  type="datetime-local"
+                  value={startsAt}
+                  onChange={(e) => setStartsAt(e.target.value)}
+                  className="w-full h-9 px-3 bg-background border border-border rounded text-sm text-foreground focus:outline-none focus:border-primary/50 transition-colors"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5">
+                  Available Until
+                </label>
+                <input
+                  type="datetime-local"
+                  value={endsAt}
+                  onChange={(e) => setEndsAt(e.target.value)}
+                  className="w-full h-9 px-3 bg-background border border-border rounded text-sm text-foreground focus:outline-none focus:border-primary/50 transition-colors"
+                />
+              </div>
+              {(startsAt || endsAt) && (
+                <button
+                  type="button"
+                  onClick={() => { setStartsAt(''); setEndsAt(''); }}
+                  className="text-[11px] text-muted-foreground hover:text-foreground"
+                >
+                  Clear schedule
+                </button>
+              )}
+              <p className="text-[11px] text-muted-foreground">
+                Leave blank for no schedule. Times use your local timezone.
+              </p>
+            </div>
 
             {/* Access code */}
-            <Card>
-              <CardContent>
-                <Label className="mb-2 block text-[10px] uppercase tracking-wider">Access Code</Label>
-                <code className="text-2xl text-primary font-mono tracking-wider">{test.access_code}</code>
-              </CardContent>
-            </Card>
+            <div className="p-4 bg-card border border-border/50 rounded-lg">
+              <label className="block text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Access Code</label>
+              <code className="text-2xl text-primary font-mono tracking-wider">{test.access_code}</code>
+            </div>
           </div>
 
           {/* Right column - Questions */}
@@ -343,10 +404,49 @@ export default function EditTestPage({ params }: { params: Promise<{ id: string 
               <h2 className="text-sm font-medium text-foreground">
                 Questions <span className="text-muted-foreground">({questions.length})</span>
               </h2>
-              <Button size="sm" onClick={() => setShowQuestionForm(true)}>
-                <Plus className="w-3.5 h-3.5" />
-                Add
-              </Button>
+              <div className="flex items-center gap-2">
+                <a
+                  href="/templates/questions-template.xlsx"
+                  download
+                  className="h-8 px-3 text-xs text-muted-foreground hover:text-foreground bg-secondary/50 hover:bg-secondary rounded flex items-center gap-1.5 transition-colors"
+                  title="Download Excel template"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3" />
+                  </svg>
+                  Template
+                </a>
+                <label
+                  className="h-8 px-3 text-xs text-muted-foreground hover:text-foreground bg-secondary/50 hover:bg-secondary rounded flex items-center gap-1.5 transition-colors cursor-pointer"
+                  title="Upload questions from an Excel file"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M17 8l-5-5-5 5M12 3v12" />
+                  </svg>
+                  Upload Excel
+                  <input
+                    type="file"
+                    accept=".xlsx,.xls"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        await handleExcelUpload(file);
+                        e.target.value = '';
+                      }
+                    }}
+                    className="hidden"
+                  />
+                </label>
+                <button
+                  onClick={() => setShowQuestionForm(true)}
+                  className="btn-shine h-8 px-3 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-medium rounded flex items-center gap-1.5 transition-colors"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                  </svg>
+                  Add
+                </button>
+              </div>
             </div>
 
             {questions.length === 0 ? (
@@ -365,17 +465,11 @@ export default function EditTestPage({ params }: { params: Promise<{ id: string 
                     </span>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            'rounded text-[10px] uppercase tracking-wider border-transparent',
-                            q.type === 'mcq'
-                              ? 'bg-blue-500/20 text-blue-600 dark:text-blue-400'
-                              : 'bg-purple-500/20 text-purple-600 dark:text-purple-400'
-                          )}
-                        >
+                        <span className={`text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded ${
+                          q.type === 'mcq' ? 'bg-blue-500/20 text-blue-600 dark:text-blue-400' : 'bg-purple-500/20 text-purple-600 dark:text-purple-400'
+                        }`}>
                           {q.type}
-                        </Badge>
+                        </span>
                         <span className="text-[10px] text-muted-foreground font-mono">{q.points}pts</span>
                       </div>
                       <p className="text-sm text-foreground truncate">{q.title}</p>
@@ -384,27 +478,27 @@ export default function EditTestPage({ params }: { params: Promise<{ id: string 
                       )}
                     </div>
                     <div className="flex-shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
+                      <button
                         onClick={() => {
                           setEditingQuestion(q);
                           setShowQuestionForm(true);
                         }}
-                        className="text-muted-foreground hover:text-primary hover:bg-primary/10"
+                        className="w-7 h-7 flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 rounded transition-colors"
                         title="Edit question"
                       >
-                        <Pencil className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </button>
+                      <button
                         onClick={() => handleDeleteQuestion(q.id)}
-                        className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                        className="w-7 h-7 flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-colors"
                         title="Delete question"
                       >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -425,70 +519,83 @@ export default function EditTestPage({ params }: { params: Promise<{ id: string 
       />
 
       {/* Send to Batches Modal */}
-      <Dialog open={showBatchModal} onOpenChange={setShowBatchModal}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-sm font-medium">Send Test to Batches</DialogTitle>
-            {batches.length > 0 && (
-              <DialogDescription className="text-xs">
-                Select batches to send the test invitation email to all students:
-              </DialogDescription>
-            )}
-          </DialogHeader>
-          {batches.length === 0 ? (
-            <div className="text-center py-8">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-lg bg-secondary border border-border mb-4">
-                <Users className="w-6 h-6 text-muted-foreground" />
-              </div>
-              <p className="text-sm text-muted-foreground mb-3">No batches created yet</p>
-              <Button variant="link" size="sm" onClick={() => router.push('/admin/batches')}>
-                Create a batch first
-              </Button>
+      {showBatchModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowBatchModal(false)} />
+          <div className="relative w-full max-w-md bg-background border border-border/50 rounded-lg shadow-2xl">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
+              <h2 className="text-sm font-medium text-foreground">Send Test to Batches</h2>
+              <button
+                onClick={() => setShowBatchModal(false)}
+                className="w-6 h-6 flex items-center justify-center text-muted-foreground hover:text-foreground rounded transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
-          ) : (
-            <>
-              <div className="space-y-2 max-h-64 overflow-y-auto">
-                {batches.map((batch) => (
-                  <label
-                    key={batch.id}
-                    className={cn(
-                      'flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors',
-                      selectedBatches.includes(batch.id)
-                        ? 'bg-primary/10 border-primary/50'
-                        : 'bg-card border-border/50 hover:border-border'
-                    )}
+            <div className="p-4">
+              {batches.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-sm text-muted-foreground mb-3">No batches created yet</p>
+                  <button
+                    onClick={() => router.push('/admin/batches')}
+                    className="text-xs text-primary hover:text-primary/80"
                   >
-                    <input
-                      type="checkbox"
-                      checked={selectedBatches.includes(batch.id)}
-                      onChange={() => toggleBatch(batch.id)}
-                      className="size-4 rounded border-border accent-primary"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-foreground">{batch.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {batch.student_count || 0} student{(batch.student_count || 0) !== 1 ? 's' : ''}
-                      </p>
-                    </div>
-                  </label>
-                ))}
-              </div>
-              <div className="flex gap-2">
-                <Button variant="secondary" onClick={() => setShowBatchModal(false)} className="flex-1">
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleSendToBatches}
-                  disabled={sending || selectedBatches.length === 0}
-                  className="flex-1 bg-emerald-600 hover:bg-emerald-500 dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white dark:text-zinc-900"
-                >
-                  {sending ? 'Sending...' : `Send to ${selectedBatches.length} batch${selectedBatches.length !== 1 ? 'es' : ''}`}
-                </Button>
-              </div>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+                    Create a batch first
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    Select batches to send the test invitation email to all students:
+                  </p>
+                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                    {batches.map((batch) => (
+                      <label
+                        key={batch.id}
+                        className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                          selectedBatches.includes(batch.id)
+                            ? 'bg-primary/10 border-primary/50'
+                            : 'bg-card border-border/50 hover:border-border'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedBatches.includes(batch.id)}
+                          onChange={() => toggleBatch(batch.id)}
+                          className="w-4 h-4 rounded border-border text-primary focus:ring-0 focus:ring-offset-0"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-foreground">{batch.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {batch.student_count || 0} student{(batch.student_count || 0) !== 1 ? 's' : ''}
+                          </p>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                  <div className="flex gap-2 mt-4">
+                    <button
+                      onClick={() => setShowBatchModal(false)}
+                      className="flex-1 h-9 text-xs text-muted-foreground hover:text-foreground bg-secondary/50 hover:bg-secondary rounded transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSendToBatches}
+                      disabled={sending || selectedBatches.length === 0}
+                      className="btn-shine flex-1 h-9 text-xs font-medium bg-emerald-600 hover:bg-emerald-500 dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white dark:text-zinc-900 rounded transition-colors disabled:bg-muted disabled:text-muted-foreground"
+                    >
+                      {sending ? 'Sending...' : `Send to ${selectedBatches.length} batch${selectedBatches.length !== 1 ? 'es' : ''}`}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

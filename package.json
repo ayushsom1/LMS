@@ -1,5 +1,5 @@
 {
-  "name": "lms-temp",
+  "name": "testrainer",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -26,7 +26,8 @@
     "redis": "^5.12.1",
     "resend": "^6.9.1",
     "tailwind-merge": "^3.4.0",
-    "uuid": "^13.0.0"
+    "uuid": "^13.0.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

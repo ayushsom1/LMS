@@ -4,19 +4,7 @@ import { useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { MCQOption, TestCase, Question } from '@/types';
 import Toast, { useToast } from '@/components/Toast';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { cn } from '@/lib/utils';
-import { Check, Plus, X } from 'lucide-react';
+import { SUPPORTED_LANGUAGES, LANGUAGE_LABELS, Language, isLanguage } from '@/lib/piston';
 
 interface QuestionFormProps {
   open: boolean;
@@ -28,6 +16,7 @@ interface QuestionFormProps {
     options?: MCQOption[];
     correct_answer?: string;
     test_cases?: TestCase[];
+    allowed_languages?: Language[];
     points: number;
   }) => Promise<void>;
   initialQuestion?: Question | null;
@@ -58,6 +47,7 @@ export default function QuestionForm({ open, onClose, onSubmit, initialQuestion 
 
   // Coding state
   const [testCases, setTestCases] = useState<TestCase[]>(defaultTestCases());
+  const [allowedLanguages, setAllowedLanguages] = useState<Language[]>(['cpp']);
 
   const isEditing = !!initialQuestion;
 
@@ -100,6 +90,8 @@ export default function QuestionForm({ open, onClose, onSubmit, initialQuestion 
         } else {
           setTestCases(defaultTestCases());
         }
+        const langs = (initialQuestion.allowed_languages || []).filter(isLanguage);
+        setAllowedLanguages(langs.length > 0 ? langs : ['cpp']);
       }
     } else if (!initialQuestion && open) {
       // Reset for "Add" mode
@@ -110,6 +102,7 @@ export default function QuestionForm({ open, onClose, onSubmit, initialQuestion 
       setOptions(defaultOptions());
       setCorrectAnswer('');
       setTestCases(defaultTestCases());
+      setAllowedLanguages(['cpp']);
     }
   }, [initialQuestion, open]);
 
@@ -142,11 +135,16 @@ export default function QuestionForm({ open, onClose, onSubmit, initialQuestion 
           toast.warning('Please provide at least 1 test case');
           return;
         }
+        if (allowedLanguages.length === 0) {
+          toast.warning('Select at least one allowed language');
+          return;
+        }
         await onSubmit({
           type,
           title,
           description,
           test_cases: validTestCases,
+          allowed_languages: allowedLanguages,
           points,
         });
       }
@@ -186,127 +184,205 @@ export default function QuestionForm({ open, onClose, onSubmit, initialQuestion 
     }
   };
 
-  return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent showCloseButton className="max-w-xl gap-0 overflow-hidden p-0">
-        <Toast messages={toast.toasts} onRemove={toast.removeToast} />
+  if (!open) return null;
 
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <Toast messages={toast.toasts} onRemove={toast.removeToast} />
+
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+      />
+
+      {/* Modal */}
+      <div className="relative w-full max-w-3xl max-h-[95vh] overflow-hidden bg-background border border-border/50 rounded-lg shadow-2xl flex flex-col">
         {/* Header */}
-        <DialogHeader className="px-4 py-3 border-b border-border/50">
-          <DialogTitle className="text-sm font-medium">{isEditing ? 'Edit Question' : 'Add Question'}</DialogTitle>
-        </DialogHeader>
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
+          <h2 className="text-sm font-medium text-foreground">{isEditing ? 'Edit Question' : 'Add Question'}</h2>
+          <button
+            onClick={onClose}
+            className="w-6 h-6 flex items-center justify-center text-muted-foreground hover:text-foreground rounded transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
 
         {/* Type tabs */}
-        <Tabs value={type} onValueChange={(v) => setType(v as 'mcq' | 'coding')} className="px-4 pt-3">
-          <TabsList className="w-full">
-            <TabsTrigger value="mcq">Multiple Choice</TabsTrigger>
-            <TabsTrigger value="coding">Coding (C++)</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <div className="flex border-b border-border/50">
+          {(!isEditing || type === 'mcq') && (
+            <button
+              type="button"
+              onClick={() => !isEditing && setType('mcq')}
+              disabled={isEditing}
+              className={`flex-1 h-10 text-xs font-medium transition-colors ${
+                type === 'mcq'
+                  ? 'text-primary border-b-2 border-primary bg-primary/5'
+                  : 'text-muted-foreground hover:text-foreground'
+              } ${isEditing ? 'cursor-default' : ''}`}
+            >
+              Multiple Choice
+            </button>
+          )}
+          {(!isEditing || type === 'coding') && (
+            <button
+              type="button"
+              onClick={() => !isEditing && setType('coding')}
+              disabled={isEditing}
+              className={`flex-1 h-10 text-xs font-medium transition-colors ${
+                type === 'coding'
+                  ? 'text-purple-600 dark:text-purple-400 border-b-2 border-purple-500 bg-purple-500/5'
+                  : 'text-muted-foreground hover:text-foreground'
+              } ${isEditing ? 'cursor-default' : ''}`}
+            >
+              Coding
+            </button>
+          )}
+        </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="overflow-y-auto max-h-[calc(85vh-160px)]">
-          <div className="p-4 space-y-4">
-            {/* Title */}
-            <div className="space-y-1.5">
-              <Label htmlFor="q-title">Question Title</Label>
-              <Input
-                id="q-title"
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Enter question title"
-                required
-              />
+        <form onSubmit={handleSubmit} className="flex-1 min-h-0 flex flex-col overflow-hidden">
+          <div className="p-4 space-y-3 overflow-y-auto">
+            {/* Title + Points row */}
+            <div className="grid grid-cols-[1fr_auto] gap-3">
+              <div>
+                <label className="block text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5 font-medium">
+                  Question Title
+                </label>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Enter question title"
+                  className="w-full h-9 px-3 bg-card border border-border rounded text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 transition-colors"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5 font-medium">
+                  Points
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  value={points}
+                  onChange={(e) => setPoints(parseInt(e.target.value) || 10)}
+                  className="w-20 h-9 px-3 bg-card border border-border rounded text-sm text-foreground focus:outline-none focus:border-primary/50 transition-colors"
+                />
+              </div>
             </div>
 
             {/* Description */}
-            <div className="space-y-1.5">
-              <Label htmlFor="q-desc">Description</Label>
-              <Textarea
-                id="q-desc"
+            <div>
+              <label className="block text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5 font-medium">
+                Description
+              </label>
+              <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Enter detailed description..."
-                rows={3}
-                className="resize-none"
+                rows={2}
+                className="w-full px-3 py-2 bg-card border border-border rounded text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 transition-colors resize-none"
                 required
-              />
-            </div>
-
-            {/* Points */}
-            <div className="space-y-1.5">
-              <Label htmlFor="q-points">Points</Label>
-              <Input
-                id="q-points"
-                type="number"
-                min={1}
-                value={points}
-                onChange={(e) => setPoints(parseInt(e.target.value) || 10)}
-                className="w-24"
               />
             </div>
 
             {/* MCQ Options */}
             {type === 'mcq' && (
-              <div className="space-y-2">
-                <Label>Options (select correct)</Label>
+              <div>
+                <label className="block text-[10px] text-muted-foreground uppercase tracking-wider mb-2 font-medium">
+                  Options (select correct)
+                </label>
                 <div className="space-y-2">
                   {options.map((option, index) => (
                     <div key={option.id} className="flex items-center gap-2">
                       <button
                         type="button"
                         onClick={() => setCorrectAnswer(option.id)}
-                        className={cn(
-                          'flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors',
+                        className={`flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
                           correctAnswer === option.id
                             ? 'border-emerald-500 bg-emerald-500'
                             : 'border-border hover:border-muted-foreground'
-                        )}
-                        aria-label={`Mark option ${index + 1} as correct`}
+                        }`}
                       >
                         {correctAnswer === option.id && (
-                          <Check className="w-3 h-3 text-white dark:text-zinc-900" strokeWidth={3} />
+                          <svg className="w-3 h-3 text-white dark:text-zinc-900" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
                         )}
                       </button>
-                      <Input
+                      <input
                         type="text"
                         value={option.text}
                         onChange={(e) => updateOption(option.id, e.target.value)}
                         placeholder={`Option ${index + 1}`}
+                        className="flex-1 h-9 px-3 bg-card border border-border rounded text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 transition-colors"
                       />
                       {options.length > 2 && (
-                        <Button
+                        <button
                           type="button"
-                          variant="ghost"
-                          size="icon-sm"
                           onClick={() => removeOption(option.id)}
-                          className="flex-shrink-0 text-muted-foreground hover:text-destructive"
-                          aria-label="Remove option"
+                          className="flex-shrink-0 w-7 h-7 flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-colors"
                         >
-                          <X className="w-4 h-4" />
-                        </Button>
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
                       )}
                     </div>
                   ))}
-                  <Button
+                  <button
                     type="button"
-                    variant="outline"
-                    size="sm"
                     onClick={addOption}
-                    className="border-dashed text-muted-foreground"
+                    className="h-8 px-3 text-xs text-muted-foreground hover:text-foreground border border-dashed border-border hover:border-muted-foreground rounded transition-colors"
                   >
-                    <Plus className="w-3.5 h-3.5" />
-                    Add option
-                  </Button>
+                    + Add option
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Allowed languages (coding only) */}
+            {type === 'coding' && (
+              <div>
+                <label className="block text-[10px] text-muted-foreground uppercase tracking-wider mb-2 font-medium">
+                  Allowed Languages
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {SUPPORTED_LANGUAGES.map((lang) => {
+                    const active = allowedLanguages.includes(lang);
+                    return (
+                      <button
+                        key={lang}
+                        type="button"
+                        onClick={() =>
+                          setAllowedLanguages((prev) =>
+                            prev.includes(lang) ? prev.filter((l) => l !== lang) : [...prev, lang]
+                          )
+                        }
+                        className={`btn-shine h-9 px-4 text-xs font-semibold rounded-md border-2 transition-all ${
+                          active
+                            ? 'bg-purple-600 text-white border-purple-700 shadow-md shadow-purple-500/30 dark:bg-purple-500 dark:border-purple-400 dark:shadow-purple-500/20'
+                            : 'bg-zinc-100 text-zinc-700 border-zinc-300 hover:bg-zinc-200 hover:border-zinc-400 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700 dark:hover:bg-zinc-700 dark:hover:border-zinc-600'
+                        }`}
+                      >
+                        {LANGUAGE_LABELS[lang]}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
 
             {/* Coding Test Cases */}
             {type === 'coding' && (
-              <div className="space-y-2">
-                <Label>Test Cases</Label>
+              <div>
+                <label className="block text-[10px] text-muted-foreground uppercase tracking-wider mb-2 font-medium">
+                  Test Cases
+                </label>
                 <div className="space-y-3">
                   {testCases.map((tc, index) => (
                     <div key={tc.id} className="p-3 bg-card border border-border/50 rounded-lg space-y-2">
@@ -318,81 +394,80 @@ export default function QuestionForm({ open, onClose, onSubmit, initialQuestion 
                               type="checkbox"
                               checked={tc.is_hidden}
                               onChange={(e) => updateTestCase(tc.id, 'is_hidden', e.target.checked)}
-                              className="w-3.5 h-3.5 rounded border-border bg-card accent-primary"
+                              className="w-3.5 h-3.5 rounded border-border bg-card text-primary focus:ring-0 focus:ring-offset-0"
                             />
                             Hidden
                           </label>
                           {testCases.length > 1 && (
-                            <Button
+                            <button
                               type="button"
-                              variant="ghost"
-                              size="xs"
                               onClick={() => removeTestCase(tc.id)}
-                              className="text-muted-foreground hover:text-destructive"
+                              className="text-[10px] text-muted-foreground hover:text-destructive transition-colors"
                             >
                               Remove
-                            </Button>
+                            </button>
                           )}
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-2">
-                        <div className="space-y-1">
-                          <Label className="text-[10px] font-normal text-muted-foreground">Input</Label>
-                          <Textarea
+                        <div>
+                          <label className="block text-[10px] text-muted-foreground mb-1">Input</label>
+                          <textarea
                             value={tc.input}
                             onChange={(e) => updateTestCase(tc.id, 'input', e.target.value)}
                             placeholder="stdin..."
                             rows={2}
-                            className="bg-secondary/50 text-xs font-mono resize-none min-h-0"
+                            className="w-full px-2 py-1.5 bg-secondary/50 border border-border/50 rounded text-xs text-foreground font-mono placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 transition-colors resize-none"
                           />
                         </div>
-                        <div className="space-y-1">
-                          <Label className="text-[10px] font-normal text-muted-foreground">Expected Output</Label>
-                          <Textarea
+                        <div>
+                          <label className="block text-[10px] text-muted-foreground mb-1">Expected Output</label>
+                          <textarea
                             value={tc.expected_output}
                             onChange={(e) => updateTestCase(tc.id, 'expected_output', e.target.value)}
                             placeholder="stdout..."
                             rows={2}
-                            className="bg-secondary/50 text-xs font-mono resize-none min-h-0"
+                            className="w-full px-2 py-1.5 bg-secondary/50 border border-border/50 rounded text-xs text-foreground font-mono placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 transition-colors resize-none"
                           />
                         </div>
                       </div>
                     </div>
                   ))}
-                  <Button
+                  <button
                     type="button"
-                    variant="outline"
-                    size="sm"
                     onClick={addTestCase}
-                    className="border-dashed text-muted-foreground"
+                    className="h-8 px-3 text-xs text-muted-foreground hover:text-foreground border border-dashed border-border hover:border-muted-foreground rounded transition-colors"
                   >
-                    <Plus className="w-3.5 h-3.5" />
-                    Add test case
-                  </Button>
+                    + Add test case
+                  </button>
                 </div>
               </div>
             )}
           </div>
 
           {/* Footer */}
-          <div className="flex gap-2 px-4 py-3 border-t border-border/50 bg-card/30">
-            <Button type="button" variant="secondary" onClick={onClose} className="flex-1">
+          <div className="flex gap-2 px-4 py-3 border-t border-border/50 bg-card/30 flex-shrink-0">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 h-9 text-xs text-muted-foreground hover:text-foreground bg-secondary/50 hover:bg-secondary rounded transition-colors"
+            >
               Cancel
-            </Button>
-            <Button
+            </button>
+            <button
               type="submit"
               disabled={loading}
-              className={cn(
-                'flex-1',
-                type === 'coding' &&
-                  'bg-purple-600 hover:bg-purple-500 dark:bg-purple-500 dark:hover:bg-purple-400 text-white dark:text-zinc-900'
-              )}
+              className={`btn-shine flex-1 h-9 text-xs font-medium rounded transition-colors ${
+                type === 'mcq'
+                  ? 'bg-primary hover:bg-primary/90 text-primary-foreground'
+                  : 'bg-purple-600 hover:bg-purple-500 dark:bg-purple-500 dark:hover:bg-purple-400 text-white dark:text-zinc-900'
+              } disabled:bg-muted disabled:text-muted-foreground`}
             >
               {loading ? (isEditing ? 'Saving...' : 'Adding...') : (isEditing ? 'Save Changes' : 'Add Question')}
-            </Button>
+            </button>
           </div>
         </form>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
 }

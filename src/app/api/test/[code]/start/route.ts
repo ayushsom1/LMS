@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
+import { getTestAccessStatus } from '@/lib/test-access';
 
 export async function POST(
   request: NextRequest,
@@ -47,11 +48,9 @@ export async function POST(
       return NextResponse.json({ error: 'Test not found' }, { status: 404 });
     }
 
-    if (!test.is_active) {
-      return NextResponse.json(
-        { error: 'Test is no longer accepting submissions' },
-        { status: 400 }
-      );
+    const access = getTestAccessStatus(test);
+    if (access.status !== 'open') {
+      return NextResponse.json({ error: access.message, access }, { status: 403 });
     }
 
     // Check if this email has already taken this test

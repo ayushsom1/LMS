@@ -4,12 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import ThemeToggle from '@/components/ThemeToggle';
 import Toast, { useToast } from '@/components/Toast';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
-import { Separator } from '@/components/ui/separator';
-import { ArrowRight, ChevronRight, CalendarClock, Info, Loader2 } from 'lucide-react';
+import Logo from '@/components/Logo';
 
 export default function CreateTestPage() {
   const router = useRouter();
@@ -57,16 +52,8 @@ export default function CreateTestPage() {
       {/* Header */}
       <header className="sticky top-0 z-20 bg-background/85 backdrop-blur border-b border-border/70">
         <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => router.push('/admin/dashboard')}
-              className="flex items-center gap-2"
-              aria-label="Testrainer home"
-            >
-              <span className="size-7 rounded-lg bg-primary text-primary-foreground grid place-items-center text-sm font-bold">T</span>
-              <span className="text-sm font-semibold tracking-tight text-foreground">Testrainer</span>
-            </button>
-            <Separator orientation="vertical" className="h-5 hidden md:block" />
+          <div className="flex items-center gap-4">
+            <Logo size="sm" />
             <div className="hidden md:flex items-center gap-1.5 text-xs text-muted-foreground">
               <button
                 onClick={() => router.push('/admin/dashboard')}
@@ -74,7 +61,9 @@ export default function CreateTestPage() {
               >
                 Tests
               </button>
-              <ChevronRight className="size-3" />
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
               <span className="text-foreground font-medium">New test</span>
             </div>
           </div>
@@ -91,91 +80,82 @@ export default function CreateTestPage() {
         </div>
 
         <form onSubmit={handleCreate} className="space-y-5 animate-in" style={{ animationDelay: '60ms' }}>
-          <div className="surface-elevated p-6 space-y-6">
-            {/* Title */}
-            <div className="space-y-1.5">
-              <Label htmlFor="title">Test title</Label>
-              <Input
-                id="title"
+          <div className="surface-elevated p-6 space-y-5">
+            <Field
+              label="Test title"
+              hint="Shown to candidates when they enter the access code."
+            >
+              <input
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g., Backend Engineer Screening — Round 1"
+                className="w-full h-10 px-3 bg-background border border-border rounded-md text-sm text-foreground placeholder:text-muted-foreground focus-ring transition-colors"
                 required
                 autoFocus
               />
-              <p className="text-[11px] text-muted-foreground">Shown to candidates when they enter the access code.</p>
-            </div>
+            </Field>
 
-            {/* Duration */}
-            <div className="space-y-1.5 sm:max-w-[14rem]">
-              <Label htmlFor="duration">Duration</Label>
-              <div className="relative">
-                <Input
-                  id="duration"
-                  type="number"
-                  min={5}
-                  max={300}
-                  value={duration}
-                  onChange={(e) => setDuration(parseInt(e.target.value) || 60)}
-                  className="pr-14 tabular-nums"
-                  required
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-mono uppercase tracking-wider pointer-events-none">min</span>
-              </div>
-              <p className="text-[11px] text-muted-foreground">Between 5 and 300 minutes.</p>
-            </div>
-
-            {/* Visibility — settings row, no wrapping */}
-            <label
-              htmlFor="visibility"
-              className="flex items-center justify-between gap-4 rounded-lg border border-border bg-background px-4 py-3 cursor-pointer"
-            >
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span
-                    className={cnDot(isActive)}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <Field label="Duration" hint="Between 5 and 300 minutes.">
+                <div className="relative">
+                  <input
+                    type="number"
+                    min={5}
+                    max={300}
+                    value={duration}
+                    onChange={(e) => setDuration(parseInt(e.target.value) || 60)}
+                    className="w-full h-10 px-3 pr-14 bg-background border border-border rounded-md text-sm text-foreground tabular-nums focus-ring transition-colors"
+                    required
                   />
-                  <span className="text-sm font-medium text-foreground">
-                    {isActive ? 'Active' : 'Inactive'}
-                  </span>
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-mono uppercase tracking-wider">min</span>
                 </div>
-                <p className="text-[11px] text-muted-foreground mt-0.5">
-                  {isActive ? 'Accepting submissions. You can flip this anytime.' : 'Not accepting submissions yet.'}
-                </p>
-              </div>
-              <Switch id="visibility" checked={isActive} onCheckedChange={setIsActive} aria-label="Toggle visibility" />
-            </label>
+              </Field>
+              <Field label="Visibility" hint="You can flip this anytime.">
+                <button
+                  type="button"
+                  onClick={() => setIsActive(!isActive)}
+                  className={`w-full h-10 px-3 rounded-md text-sm font-medium transition-all flex items-center justify-between border ${
+                    isActive
+                      ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30'
+                      : 'bg-secondary text-muted-foreground border-border'
+                  }`}
+                >
+                  <span className="inline-flex items-center gap-2">
+                    {isActive && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />}
+                    {isActive ? 'Active — accepting submissions' : 'Inactive'}
+                  </span>
+                  <Toggle on={isActive} />
+                </button>
+              </Field>
+            </div>
 
-            <Separator />
-
-            {/* Scheduling window */}
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <CalendarClock className="size-4 text-muted-foreground" />
-                <span className="text-sm font-medium text-foreground">Scheduling window</span>
-                <span className="text-[11px] text-muted-foreground font-normal">(optional)</span>
+            <div className="pt-1 border-t border-border/60">
+              <div className="flex items-center gap-2 mt-4 mb-3">
+                <svg className="w-4 h-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <span className="text-xs font-medium text-foreground">Scheduling window</span>
+                <span className="text-[10px] text-muted-foreground font-normal">(optional)</span>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="startsAt">Available from</Label>
-                  <Input
-                    id="startsAt"
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <Field label="Available from">
+                  <input
                     type="datetime-local"
                     value={startsAt}
                     onChange={(e) => setStartsAt(e.target.value)}
+                    className="w-full h-10 px-3 bg-background border border-border rounded-md text-sm text-foreground focus-ring transition-colors"
                   />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="endsAt">Available until</Label>
-                  <Input
-                    id="endsAt"
+                </Field>
+                <Field label="Available until">
+                  <input
                     type="datetime-local"
                     value={endsAt}
                     min={startsAt || undefined}
                     onChange={(e) => setEndsAt(e.target.value)}
+                    className="w-full h-10 px-3 bg-background border border-border rounded-md text-sm text-foreground focus-ring transition-colors"
                   />
-                </div>
+                </Field>
               </div>
               <p className="mt-2.5 text-[11px] text-muted-foreground">
                 Leave blank for no schedule. Students can only start the test inside this window.
@@ -185,8 +165,10 @@ export default function CreateTestPage() {
 
           {/* Info card */}
           <div className="surface-card p-4 flex gap-3">
-            <div className="size-8 rounded-md bg-primary/10 grid place-items-center flex-shrink-0">
-              <Info className="size-4 text-primary" />
+            <div className="w-8 h-8 rounded-md bg-primary/10 grid place-items-center flex-shrink-0">
+              <svg className="w-4 h-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
             </div>
             <div className="text-xs text-muted-foreground space-y-1 pt-0.5">
               <p>A unique 6-character access code is generated automatically.</p>
@@ -195,21 +177,29 @@ export default function CreateTestPage() {
           </div>
 
           <div className="flex items-center justify-between gap-3 pt-2">
-            <Button
+            <button
               type="button"
-              variant="ghost"
               onClick={() => router.push('/admin/dashboard')}
-              className="text-muted-foreground"
+              className="h-10 px-4 text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               Cancel
-            </Button>
-            <Button type="submit" disabled={loading || !title.trim()}>
+            </button>
+            <button
+              type="submit"
+              disabled={loading || !title.trim()}
+              className="h-10 px-5 bg-primary hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground text-primary-foreground text-sm font-medium rounded-md transition-all flex items-center justify-center gap-2 shadow-sm shadow-primary/20"
+            >
               {loading ? (
-                <Loader2 className="size-4 animate-spin" />
+                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
               ) : (
-                <>Create test<ArrowRight className="size-4" /></>
+                <>
+                  Create test
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+                </>
               )}
-            </Button>
+            </button>
           </div>
         </form>
       </main>
@@ -217,9 +207,28 @@ export default function CreateTestPage() {
   );
 }
 
-function cnDot(active: boolean) {
-  return [
-    'size-1.5 rounded-full',
-    active ? 'bg-emerald-500 dark:bg-emerald-400 pulse-slow' : 'bg-muted-foreground/40',
-  ].join(' ');
+function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="block text-xs font-medium text-foreground mb-1.5">{label}</label>
+      {children}
+      {hint && <p className="mt-1.5 text-[11px] text-muted-foreground">{hint}</p>}
+    </div>
+  );
+}
+
+function Toggle({ on }: { on: boolean }) {
+  return (
+    <span
+      className={`relative inline-block w-8 h-4 rounded-full transition-colors ${
+        on ? 'bg-emerald-500' : 'bg-muted-foreground/30'
+      }`}
+    >
+      <span
+        className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all shadow ${
+          on ? 'left-4' : 'left-0.5'
+        }`}
+      />
+    </span>
+  );
 }

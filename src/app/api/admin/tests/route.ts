@@ -34,10 +34,14 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { title, duration_minutes, is_active } = body;
+    const { title, duration_minutes, is_active, starts_at, ends_at } = body;
 
     if (!title) {
       return NextResponse.json({ error: 'Title is required' }, { status: 400 });
+    }
+
+    if (starts_at && ends_at && new Date(ends_at) <= new Date(starts_at)) {
+      return NextResponse.json({ error: 'End time must be after start time' }, { status: 400 });
     }
 
     // Generate unique access code
@@ -62,6 +66,8 @@ export async function POST(request: NextRequest) {
         duration_minutes: duration_minutes || 60,
         access_code: accessCode,
         is_active: is_active ?? true,
+        starts_at: starts_at || null,
+        ends_at: ends_at || null,
       })
       .select()
       .single();

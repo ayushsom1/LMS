@@ -2,18 +2,37 @@
 
 import { useEffect, useState, use, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Test, Question, Submission, MCQOption, TestCase } from '@/types';
-import { formatDate, cn } from '@/lib/utils';
+import { Test, Question, Submission, MCQOption, TestCase, SubmissionAnswer } from '@/types';
+import { formatDate } from '@/lib/utils';
 import ThemeToggle from '@/components/ThemeToggle';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { ArrowLeft, AlertTriangle, Check, X } from 'lucide-react';
 
-interface DetailedSubmission extends Submission {
-  answers: Record<string, string>;
+type StoredAnswer = SubmissionAnswer | undefined;
+
+type DetailedSubmission = Submission;
+
+function getCodeString(answer: StoredAnswer): string {
+  if (!answer) return '';
+  if (typeof answer === 'string') return answer;
+  if (typeof answer === 'object' && 'code' in answer && typeof answer.code === 'string') return answer.code;
+  return '';
+}
+
+function getCodeLanguage(answer: StoredAnswer): string | null {
+  if (answer && typeof answer === 'object' && 'language' in answer && typeof answer.language === 'string') {
+    return answer.language;
+  }
+  return null;
+}
+
+function getMcqSelection(answer: StoredAnswer): string | null {
+  return typeof answer === 'string' && answer ? answer : null;
+}
+
+function isAnswerAttempted(answer: StoredAnswer): boolean {
+  if (!answer) return false;
+  if (typeof answer === 'string') return answer.length > 0;
+  if (typeof answer === 'object' && 'code' in answer) return typeof answer.code === 'string' && answer.code.length > 0;
+  return false;
 }
 
 export default function SubmissionDetailPage({
@@ -66,24 +85,8 @@ export default function SubmissionDetailPage({
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background">
-        <header className="sticky top-0 z-20 bg-background/80 backdrop-blur-sm border-b border-border/50">
-          <div className="max-w-5xl mx-auto px-4 h-14 flex items-center">
-            <Skeleton className="h-5 w-40" />
-          </div>
-        </header>
-        <main className="max-w-5xl mx-auto px-4 py-6">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-20 rounded-lg" />
-            ))}
-          </div>
-          <div className="space-y-4">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-32 w-full rounded-lg" />
-            ))}
-          </div>
-        </main>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-5 h-5 border-2 border-border border-t-primary rounded-full animate-spin" />
       </div>
     );
   }
@@ -99,11 +102,12 @@ export default function SubmissionDetailPage({
   const mcqQuestions = questions.filter((q) => q.type === 'mcq');
   const codingQuestions = questions.filter((q) => q.type === 'coding');
 
-  const mcqCorrect = mcqQuestions.filter(
-    (q) => submission.answers[q.id] && isCorrectMCQ(q, submission.answers[q.id])
-  ).length;
-  const mcqAttempted = mcqQuestions.filter((q) => submission.answers[q.id]).length;
-  const codingAttempted = codingQuestions.filter((q) => submission.answers[q.id]).length;
+  const mcqCorrect = mcqQuestions.filter((q) => {
+    const sel = getMcqSelection(submission.answers[q.id]);
+    return sel != null && isCorrectMCQ(q, sel);
+  }).length;
+  const mcqAttempted = mcqQuestions.filter((q) => isAnswerAttempted(submission.answers[q.id])).length;
+  const codingAttempted = codingQuestions.filter((q) => isAnswerAttempted(submission.answers[q.id])).length;
 
   return (
     <div className="min-h-screen bg-background">
@@ -111,15 +115,14 @@ export default function SubmissionDetailPage({
       <header className="sticky top-0 z-20 bg-background/80 backdrop-blur-sm border-b border-border/50">
         <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="icon-sm"
+            <button
               onClick={() => router.push(`/admin/tests/${id}/results`)}
-              className="text-muted-foreground"
-              aria-label="Back to results"
+              className="text-muted-foreground hover:text-foreground transition-colors"
             >
-              <ArrowLeft className="w-4 h-4" />
-            </Button>
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+            </button>
             <div>
               <span className="text-sm font-medium text-foreground">Submission Details</span>
               <span className="text-xs text-muted-foreground ml-2 font-mono">/ {test.title}</span>
@@ -132,50 +135,46 @@ export default function SubmissionDetailPage({
       <main className="max-w-5xl mx-auto px-4 py-6">
         {/* Student Info Card */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <Card className="py-0">
-            <CardContent className="p-4">
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Student</p>
-              <p className="text-sm font-medium text-foreground truncate">{submission.student_name}</p>
-              <p className="text-xs text-muted-foreground truncate">{submission.student_email}</p>
-            </CardContent>
-          </Card>
-          <Card className="py-0">
-            <CardContent className="p-4">
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Submitted</p>
-              <p className="text-sm font-medium text-foreground">
-                {submission.submitted_at ? formatDate(submission.submitted_at) : 'In Progress'}
-              </p>
-              {submission.auto_submitted && (
-                <span className="text-[10px] text-destructive">Auto-submitted</span>
-              )}
-            </CardContent>
-          </Card>
-          <Card className="py-0">
-            <CardContent className="p-4">
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Score Breakdown</p>
-              <div className="flex items-baseline gap-2">
-                <span className="text-sm text-muted-foreground">MCQ: <span className="text-foreground font-mono">{submission.mcq_score}</span></span>
-                <span className="text-sm text-muted-foreground">Code: <span className="text-foreground font-mono">{submission.coding_score}</span></span>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="py-0 bg-primary/10 border-primary/30">
-            <CardContent className="p-4">
-              <p className="text-[10px] text-primary uppercase tracking-wider mb-1">Total Score</p>
-              <p className="text-2xl font-mono text-primary font-semibold">{submission.total_score}</p>
-            </CardContent>
-          </Card>
+          <div className="p-4 bg-card border border-border/50 rounded-lg">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Student</p>
+            <p className="text-sm font-medium text-foreground truncate">{submission.student_name}</p>
+            <p className="text-xs text-muted-foreground truncate">{submission.student_email}</p>
+          </div>
+          <div className="p-4 bg-card border border-border/50 rounded-lg">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Submitted</p>
+            <p className="text-sm font-medium text-foreground">
+              {submission.submitted_at ? formatDate(submission.submitted_at) : 'In Progress'}
+            </p>
+            {submission.auto_submitted && (
+              <span className="text-[10px] text-destructive">Auto-submitted</span>
+            )}
+          </div>
+          <div className="p-4 bg-card border border-border/50 rounded-lg">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Score Breakdown</p>
+            <div className="flex items-baseline gap-2">
+              <span className="text-sm text-muted-foreground">MCQ: <span className="text-foreground font-mono">{submission.mcq_score}</span></span>
+              <span className="text-sm text-muted-foreground">Code: <span className="text-foreground font-mono">{submission.coding_score}</span></span>
+            </div>
+          </div>
+          <div className="p-4 bg-primary/10 border border-primary/30 rounded-lg">
+            <p className="text-[10px] text-primary uppercase tracking-wider mb-1">Total Score</p>
+            <p className="text-2xl font-mono text-primary font-semibold">{submission.total_score}</p>
+          </div>
         </div>
 
         {/* Violations Warning */}
         {(submission.violation_count || 0) > 0 && (
-          <Alert className="mb-6 bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400 [&>svg]:text-amber-500">
-            <AlertTriangle />
-            <AlertTitle className="text-amber-600 dark:text-amber-400">
-              {submission.violation_count} Violation{(submission.violation_count || 0) > 1 ? 's' : ''} Recorded
-            </AlertTitle>
+          <div className="mb-6 p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+            <div className="flex items-center gap-2 mb-2">
+              <svg className="w-4 h-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <span className="text-sm font-medium text-amber-600 dark:text-amber-400">
+                {submission.violation_count} Violation{(submission.violation_count || 0) > 1 ? 's' : ''} Recorded
+              </span>
+            </div>
             {submission.violations && submission.violations.length > 0 && (
-              <AlertDescription>
+              <div className="space-y-1 ml-6">
                 {submission.violations.map((v, i) => (
                   <p key={i} className="text-xs text-muted-foreground">
                     <span className="text-amber-600 dark:text-amber-400">{v.type}</span>: {v.message}
@@ -184,9 +183,9 @@ export default function SubmissionDetailPage({
                     </span>
                   </p>
                 ))}
-              </AlertDescription>
+              </div>
             )}
-          </Alert>
+          </div>
         )}
 
         {/* Summary Stats */}
@@ -216,9 +215,12 @@ export default function SubmissionDetailPage({
             .sort((a, b) => a.order_index - b.order_index)
             .map((question, index) => {
               const answer = submission.answers[question.id];
-              const isAttempted = !!answer;
+              const isAttempted = isAnswerAttempted(answer);
               const isMCQ = question.type === 'mcq';
-              const isCorrect = isMCQ && answer ? isCorrectMCQ(question, answer) : null;
+              const mcqAnswerId = getMcqSelection(answer);
+              const codeText = getCodeString(answer);
+              const codeLang = getCodeLanguage(answer);
+              const isCorrect = isMCQ && mcqAnswerId ? isCorrectMCQ(question, mcqAnswerId) : null;
 
               return (
                 <div
@@ -239,40 +241,42 @@ export default function SubmissionDetailPage({
                       <span className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded bg-secondary text-[10px] text-muted-foreground font-mono">
                         {index + 1}
                       </span>
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          'rounded text-[10px] uppercase tracking-wider border-transparent',
+                      <span
+                        className={`text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded font-medium ${
                           question.type === 'mcq'
                             ? 'bg-blue-500/20 text-blue-600 dark:text-blue-400'
                             : 'bg-purple-500/20 text-purple-600 dark:text-purple-400'
-                        )}
+                        }`}
                       >
                         {question.type}
-                      </Badge>
+                      </span>
                       <span className="text-[10px] text-muted-foreground font-mono">{question.points} pts</span>
                     </div>
                     <div className="flex items-center gap-2">
                       {!isAttempted ? (
-                        <Badge variant="secondary" className="rounded text-[10px] uppercase tracking-wider">
+                        <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded bg-secondary text-muted-foreground">
                           Not Attempted
-                        </Badge>
+                        </span>
                       ) : isMCQ ? (
                         isCorrect ? (
-                          <Badge variant="outline" className="rounded text-[10px] uppercase tracking-wider border-transparent bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">
-                            <Check className="w-3 h-3" />
+                          <span className="flex items-center gap-1 text-[10px] uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">
+                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
                             Correct
-                          </Badge>
+                          </span>
                         ) : (
-                          <Badge variant="outline" className="rounded text-[10px] uppercase tracking-wider border-transparent bg-destructive/20 text-destructive">
-                            <X className="w-3 h-3" />
+                          <span className="flex items-center gap-1 text-[10px] uppercase tracking-wider px-2 py-0.5 rounded bg-destructive/20 text-destructive">
+                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
                             Wrong
-                          </Badge>
+                          </span>
                         )
                       ) : (
-                        <Badge variant="outline" className="rounded text-[10px] uppercase tracking-wider border-transparent bg-purple-500/20 text-purple-600 dark:text-purple-400">
+                        <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded bg-purple-500/20 text-purple-600 dark:text-purple-400">
                           Submitted
-                        </Badge>
+                        </span>
                       )}
                     </div>
                   </div>
@@ -292,7 +296,7 @@ export default function SubmissionDetailPage({
                             ? { id: rawOption, text: rawOption }
                             : { id: rawOption.id ?? String(optionIndex), text: rawOption.text };
 
-                        const isSelected = answer != null && answer === option.id;
+                        const isSelected = mcqAnswerId != null && mcqAnswerId === option.id;
                         const isCorrectOption =
                           question.correct_answer != null && option.id === question.correct_answer;
 
@@ -317,11 +321,21 @@ export default function SubmissionDetailPage({
                               }`}
                             >
                               {(isCorrectOption || isSelected) && (
-                                isCorrectOption ? (
-                                  <Check className={cn('w-2.5 h-2.5', 'text-white dark:text-zinc-900')} strokeWidth={3} />
-                                ) : (
-                                  <X className="w-2.5 h-2.5 text-white" strokeWidth={3} />
-                                )
+                                <svg
+                                  className={`w-2.5 h-2.5 ${
+                                    isCorrectOption ? 'text-white dark:text-zinc-900' : 'text-white'
+                                  }`}
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                  strokeWidth={3}
+                                >
+                                  {isCorrectOption ? (
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                  ) : (
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                  )}
+                                </svg>
                               )}
                             </div>
                             <span
@@ -363,9 +377,9 @@ export default function SubmissionDetailPage({
                                 <div className="flex items-center justify-between mb-1">
                                   <span className="text-muted-foreground">Case {i + 1}</span>
                                   {tc.is_hidden && (
-                                    <Badge variant="secondary" className="rounded text-[10px]">
+                                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">
                                       Hidden
-                                    </Badge>
+                                    </span>
                                   )}
                                 </div>
                                 <div className="grid grid-cols-2 gap-2">
@@ -391,11 +405,11 @@ export default function SubmissionDetailPage({
                       {/* Student's Code */}
                       <div>
                         <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">
-                          Student&apos;s Code
+                          Student&apos;s Code{codeLang ? <span className="ml-2 normal-case text-muted-foreground/70">({codeLang})</span> : null}
                         </p>
-                        {answer ? (
+                        {codeText ? (
                           <pre className="p-3 bg-zinc-900 dark:bg-zinc-950 border border-border/50 rounded-lg text-xs text-zinc-100 font-mono overflow-x-auto max-h-64 overflow-y-auto">
-                            {answer}
+                            {codeText}
                           </pre>
                         ) : (
                           <p className="text-xs text-muted-foreground italic p-3 bg-secondary/30 rounded-lg">

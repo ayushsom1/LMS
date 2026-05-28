@@ -11,7 +11,10 @@ create table if not exists tests (
   duration_minutes int not null default 60,
   access_code text unique not null,
   is_active boolean default true,
-  created_at timestamp with time zone default now()
+  starts_at timestamptz,
+  ends_at   timestamptz,
+  created_at timestamp with time zone default now(),
+  constraint tests_window_valid check (starts_at is null or ends_at is null or ends_at > starts_at)
 );
 
 -- Questions table
@@ -24,6 +27,7 @@ create table if not exists questions (
   options jsonb,
   correct_answer text,
   test_cases jsonb,
+  allowed_languages text[] not null default '{cpp}',
   points int not null default 10,
   order_index int not null default 0
 );
@@ -90,6 +94,7 @@ create index if not exists idx_batch_students_email on batch_students(email);
 create index if not exists idx_batch_students_created_at on batch_students(created_at desc);
 create index if not exists idx_test_batches_test_id on test_batches(test_id);
 create index if not exists idx_test_batches_batch_id on test_batches(batch_id);
+create index if not exists idx_tests_window on tests(starts_at, ends_at);
 
 -- Row Level Security (RLS) Policies
 -- Enable RLS

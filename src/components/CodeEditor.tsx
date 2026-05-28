@@ -18,14 +18,21 @@ interface CodeEditorProps {
   onChange: (value: string) => void;
   height?: string;
   readOnly?: boolean;
+  language?: string;
 }
 
-export default function CodeEditor({ value, onChange, height = '400px', readOnly = false }: CodeEditorProps) {
+const MONACO_LANG: Record<string, string> = {
+  cpp: 'cpp',
+  python: 'python',
+  java: 'java',
+};
+
+export default function CodeEditor({ value, onChange, height = '400px', readOnly = false, language = 'cpp' }: CodeEditorProps) {
   return (
     <div className="rounded-lg overflow-hidden border border-slate-600">
       <Editor
         height={height}
-        defaultLanguage="cpp"
+        language={MONACO_LANG[language] || 'plaintext'}
         theme="vs-dark"
         value={value}
         onChange={(v) => onChange(v || '')}

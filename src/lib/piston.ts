@@ -6,18 +6,54 @@ const PISTON_URL = 'https://emkc.org/api/v2/piston';
 
 const useJudge0 = !!JUDGE0_URL;
 
-export type Language = 'c' | 'cpp';
+export type Language = 'cpp' | 'python' | 'java';
 
-// Judge0 language IDs
+export const SUPPORTED_LANGUAGES: Language[] = ['cpp', 'python', 'java'];
+
+export const LANGUAGE_LABELS: Record<Language, string> = {
+  cpp: 'C++',
+  python: 'Python',
+  java: 'Java',
+};
+
+// Judge0 language IDs (Judge0 CE / extra)
 const JUDGE0_LANGUAGE_IDS: Record<Language, number> = {
-  c: 50,    // C (GCC 9.2.0)
-  cpp: 54,  // C++ (GCC 9.2.0)
+  cpp: 54,    // C++ (GCC 9.2.0)
+  python: 71, // Python (3.8.1)
+  java: 62,   // Java (OpenJDK 13.0.1)
 };
 
 // Piston language configs (fallback)
-const PISTON_LANGUAGE_CONFIG: Record<Language, { language: string; version: string }> = {
-  c: { language: 'c', version: '10.2.0' },
-  cpp: { language: 'cpp', version: '10.2.0' },
+const PISTON_LANGUAGE_CONFIG: Record<Language, { language: string; version: string; filename?: string }> = {
+  cpp: { language: 'cpp', version: '10.2.0', filename: 'main.cpp' },
+  python: { language: 'python', version: '3.10.0', filename: 'main.py' },
+  // Piston runs Java with the file's class name — must be "Main"
+  java: { language: 'java', version: '15.0.2', filename: 'Main.java' },
+};
+
+export function isLanguage(value: unknown): value is Language {
+  return typeof value === 'string' && (SUPPORTED_LANGUAGES as string[]).includes(value);
+}
+
+export const LANGUAGE_STARTER_CODE: Record<Language, string> = {
+  cpp: `#include <iostream>
+using namespace std;
+
+int main() {
+    // your code here
+    return 0;
+}
+`,
+  python: `# your code here
+`,
+  java: `import java.util.*;
+
+public class Main {
+    public static void main(String[] args) {
+        // your code here
+    }
+}
+`,
 };
 
 interface PistonExecuteRequest {
@@ -144,7 +180,7 @@ async function executeWithPiston(
   const payload: PistonExecuteRequest = {
     language: config.language,
     version: config.version,
-    files: [{ content: sourceCode }],
+    files: [{ name: config.filename, content: sourceCode }],
     stdin: stdin,
     compile_timeout: 10000,
     run_timeout: 5000,

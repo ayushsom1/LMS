@@ -11,6 +11,29 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft, Check, X, FileX } from 'lucide-react';
 
+type StoredAnswer = string | { code: string; language: string } | null | undefined;
+
+function getCodeString(answer: StoredAnswer): string {
+  if (!answer) return '';
+  if (typeof answer === 'string') return answer;
+  if (typeof answer === 'object' && 'code' in answer && typeof answer.code === 'string') return answer.code;
+  return '';
+}
+
+function getCodeLanguage(answer: StoredAnswer): string | null {
+  if (answer && typeof answer === 'object' && 'language' in answer && typeof answer.language === 'string') {
+    return answer.language;
+  }
+  return null;
+}
+
+function isAnswerAttempted(answer: StoredAnswer): boolean {
+  if (!answer) return false;
+  if (typeof answer === 'string') return answer.length > 0;
+  if (typeof answer === 'object' && 'code' in answer) return typeof answer.code === 'string' && answer.code.length > 0;
+  return false;
+}
+
 interface QuestionWithResult {
   id: string;
   type: 'mcq' | 'coding';
@@ -29,7 +52,7 @@ interface SubmissionDetail {
   test_id: string;
   student_name: string;
   student_email: string;
-  answers: Record<string, string>;
+  answers: Record<string, string | { code: string; language: string } | null>;
   mcq_score: number;
   coding_score: number;
   total_score: number;
@@ -130,8 +153,8 @@ export default function StudentResultPage({ params }: { params: Promise<{ id: st
   const mcqQuestions = questions.filter((q) => q.type === 'mcq');
   const codingQuestions = questions.filter((q) => q.type === 'coding');
   const mcqCorrect = mcqQuestions.filter((q) => q.student_correct).length;
-  const mcqAttempted = mcqQuestions.filter((q) => submission.answers[q.id]).length;
-  const codingAttempted = codingQuestions.filter((q) => submission.answers[q.id]).length;
+  const mcqAttempted = mcqQuestions.filter((q) => isAnswerAttempted(submission.answers[q.id])).length;
+  const codingAttempted = codingQuestions.filter((q) => isAnswerAttempted(submission.answers[q.id])).length;
 
   return (
     <div className="min-h-screen bg-background">
@@ -255,7 +278,10 @@ export default function StudentResultPage({ params }: { params: Promise<{ id: st
             .sort((a, b) => a.order_index - b.order_index)
             .map((question, index) => {
               const answer = submission.answers[question.id];
-              const isAttempted = !!answer;
+              const isAttempted = isAnswerAttempted(answer);
+              const mcqAnswerId = typeof answer === 'string' ? answer : null;
+              const codeText = getCodeString(answer);
+              const codeLang = getCodeLanguage(answer);
               const isMCQ = question.type === 'mcq';
 
               return (
@@ -334,7 +360,7 @@ export default function StudentResultPage({ params }: { params: Promise<{ id: st
                             ? { id: rawOption, text: rawOption }
                             : { id: rawOption.id ?? String(optionIndex), text: rawOption.text };
 
-                        const isSelected = answer != null && answer === option.id;
+                        const isSelected = mcqAnswerId != null && mcqAnswerId === option.id;
                         const isCorrectOption = question.student_correct && isSelected;
                         // Only highlight as correct when the API actually revealed the correct answer.
                         const showAsCorrect =
@@ -428,10 +454,12 @@ export default function StudentResultPage({ params }: { params: Promise<{ id: st
 
                       {/* Student's code */}
                       <div>
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Your Code</p>
-                        {answer ? (
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">
+                          Your Code{codeLang ? <span className="ml-2 normal-case text-muted-foreground/70">({codeLang})</span> : null}
+                        </p>
+                        {codeText ? (
                           <pre className="p-3 bg-zinc-900 dark:bg-zinc-950 border border-border/50 rounded-lg text-xs text-zinc-100 font-mono overflow-x-auto max-h-64 overflow-y-auto">
-                            {answer}
+                            {codeText}
                           </pre>
                         ) : (
                           <p className="text-xs text-muted-foreground italic p-3 bg-secondary/30 rounded-lg">
