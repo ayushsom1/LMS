@@ -72,139 +72,148 @@ export default function CreateTestPage() {
       </header>
 
       {/* Main */}
-      <main className="max-w-2xl mx-auto px-6 py-10">
-        <div className="mb-8 animate-in">
+      <main className="max-w-5xl mx-auto px-6 py-6">
+        <div className="mb-5 animate-in">
           <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium mb-1">Step 1 of 2</p>
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">Create a new test</h1>
           <p className="text-sm text-muted-foreground mt-1">Set the basics now — you&apos;ll add questions in the next step.</p>
         </div>
 
-        <form onSubmit={handleCreate} className="space-y-5 animate-in" style={{ animationDelay: '60ms' }}>
-          <div className="surface-elevated p-6 space-y-5">
-            <Field
-              label="Test title"
-              hint="Shown to candidates when they enter the access code."
-            >
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g., Backend Engineer Screening — Round 1"
-                className="w-full h-10 px-3 bg-background border border-border rounded-md text-sm text-foreground placeholder:text-muted-foreground focus-ring transition-colors"
-                required
-                autoFocus
-              />
-            </Field>
-
-            <div className="sm:max-w-[14rem]">
-              <Field label="Duration" hint="Between 5 and 300 minutes.">
-                <div className="relative">
-                  <input
-                    type="number"
-                    min={5}
-                    max={300}
-                    value={duration}
-                    onChange={(e) => setDuration(parseInt(e.target.value) || 60)}
-                    className="w-full h-10 px-3 pr-14 bg-background border border-border rounded-md text-sm text-foreground tabular-nums focus-ring transition-colors"
-                    required
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-mono uppercase tracking-wider pointer-events-none">min</span>
-                </div>
+        <form
+          onSubmit={handleCreate}
+          className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px] gap-6 animate-in"
+          style={{ animationDelay: '60ms' }}
+        >
+          {/* Left column: form */}
+          <div className="space-y-4 min-w-0">
+            <div className="surface-elevated p-5 space-y-4">
+              <Field
+                label="Test title"
+                hint="Shown to candidates when they enter the access code."
+              >
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="e.g., Backend Engineer Screening — Round 1"
+                  className="w-full h-10 px-3 bg-background border border-border rounded-md text-sm text-foreground placeholder:text-muted-foreground focus-ring transition-colors"
+                  required
+                  autoFocus
+                />
               </Field>
-            </div>
 
-            {/* Visibility — full-width settings row, no wrapping */}
-            <button
-              type="button"
-              onClick={() => setIsActive(!isActive)}
-              className="w-full flex items-center justify-between gap-4 rounded-md border border-border bg-background px-4 py-3 hover:border-border/80 transition-colors text-left"
-              aria-pressed={isActive}
-            >
-              <span className="min-w-0">
-                <span className="flex items-center gap-2">
-                  <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-500 dark:bg-emerald-400 pulse-slow' : 'bg-muted-foreground/40'}`} />
-                  <span className="text-sm font-medium text-foreground">
-                    {isActive ? 'Active' : 'Inactive'}
-                  </span>
-                </span>
-                <span className="block text-[11px] text-muted-foreground mt-0.5">
-                  {isActive ? 'Accepting submissions. You can flip this anytime.' : 'Not accepting submissions yet.'}
-                </span>
-              </span>
-              <Toggle on={isActive} />
-            </button>
-
-            <div className="pt-1 border-t border-border/60">
-              <div className="flex items-center gap-2 mt-4 mb-3">
-                <svg className="w-4 h-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                <span className="text-xs font-medium text-foreground">Scheduling window</span>
-                <span className="text-[10px] text-muted-foreground font-normal">(optional)</span>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                <Field label="Available from">
-                  <input
-                    type="datetime-local"
-                    value={startsAt}
-                    onChange={(e) => setStartsAt(e.target.value)}
-                    className="w-full h-10 px-3 bg-background border border-border rounded-md text-sm text-foreground focus-ring transition-colors"
-                  />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Field label="Duration" hint="Between 5 and 300 minutes.">
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min={5}
+                      max={300}
+                      value={duration}
+                      onChange={(e) => setDuration(parseInt(e.target.value) || 60)}
+                      className="w-full h-10 px-3 pr-14 bg-background border border-border rounded-md text-sm text-foreground tabular-nums focus-ring transition-colors"
+                      required
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-mono uppercase tracking-wider pointer-events-none">min</span>
+                  </div>
                 </Field>
-                <Field label="Available until">
-                  <input
-                    type="datetime-local"
-                    value={endsAt}
-                    min={startsAt || undefined}
-                    onChange={(e) => setEndsAt(e.target.value)}
-                    className="w-full h-10 px-3 bg-background border border-border rounded-md text-sm text-foreground focus-ring transition-colors"
-                  />
+                <Field label="Visibility" hint="You can flip this anytime.">
+                  <button
+                    type="button"
+                    onClick={() => setIsActive(!isActive)}
+                    className="w-full h-10 px-3 flex items-center justify-between gap-3 rounded-md border border-border bg-background hover:border-border/80 transition-colors text-left"
+                    aria-pressed={isActive}
+                  >
+                    <span className="flex items-center gap-2 min-w-0">
+                      <span className={`w-1.5 h-1.5 shrink-0 rounded-full ${isActive ? 'bg-emerald-500 dark:bg-emerald-400 pulse-slow' : 'bg-muted-foreground/40'}`} />
+                      <span className="text-sm font-medium text-foreground truncate">
+                        {isActive ? 'Active' : 'Inactive'}
+                      </span>
+                    </span>
+                    <Toggle on={isActive} />
+                  </button>
                 </Field>
               </div>
-              <p className="mt-2.5 text-[11px] text-muted-foreground">
-                Leave blank for no schedule. Students can only start the test inside this window.
-              </p>
-            </div>
-          </div>
 
-          {/* Info card */}
-          <div className="surface-card p-4 flex gap-3">
-            <div className="w-8 h-8 rounded-md bg-primary/10 grid place-items-center flex-shrink-0">
-              <svg className="w-4 h-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <div className="text-xs text-muted-foreground space-y-1 pt-0.5">
-              <p>A unique 6-character access code is generated automatically.</p>
-              <p>You can add MCQ and coding questions in the next step, or bulk-import via Excel.</p>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between gap-3 pt-2">
-            <button
-              type="button"
-              onClick={() => router.push('/admin/dashboard')}
-              className="h-10 px-4 text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={loading || !title.trim()}
-              className="h-10 px-5 bg-primary hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground text-primary-foreground text-sm font-medium rounded-md transition-all flex items-center justify-center gap-2 shadow-sm shadow-primary/20"
-            >
-              {loading ? (
-                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <>
-                  Create test
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              <div className="pt-3 border-t border-border/60">
+                <div className="flex items-center gap-2 mb-3">
+                  <svg className="w-4 h-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
-                </>
-              )}
-            </button>
+                  <span className="text-xs font-medium text-foreground">Scheduling window</span>
+                  <span className="text-[10px] text-muted-foreground font-normal">(optional)</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Field label="Available from">
+                    <input
+                      type="datetime-local"
+                      value={startsAt}
+                      onChange={(e) => setStartsAt(e.target.value)}
+                      className="w-full h-10 px-3 bg-background border border-border rounded-md text-sm text-foreground focus-ring transition-colors"
+                    />
+                  </Field>
+                  <Field label="Available until">
+                    <input
+                      type="datetime-local"
+                      value={endsAt}
+                      min={startsAt || undefined}
+                      onChange={(e) => setEndsAt(e.target.value)}
+                      className="w-full h-10 px-3 bg-background border border-border rounded-md text-sm text-foreground focus-ring transition-colors"
+                    />
+                  </Field>
+                </div>
+                <p className="mt-2 text-[11px] text-muted-foreground">
+                  Leave blank for no schedule. Students can only start the test inside this window.
+                </p>
+              </div>
+            </div>
+
+            {/* Action row */}
+            <div className="flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => router.push('/admin/dashboard')}
+                className="h-10 px-4 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={loading || !title.trim()}
+                className="h-10 px-5 bg-primary hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground text-primary-foreground text-sm font-medium rounded-md transition-all flex items-center justify-center gap-2 shadow-sm shadow-primary/20"
+              >
+                {loading ? (
+                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <>
+                    Create test
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                    </svg>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
+
+          {/* Right column: sticky help sidebar (uses the side whitespace) */}
+          <aside className="lg:sticky lg:top-20 lg:self-start space-y-3">
+            <div className="surface-card p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-7 h-7 rounded-md bg-primary/10 grid place-items-center">
+                  <svg className="w-3.5 h-3.5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <p className="text-xs font-semibold text-foreground">What happens next</p>
+              </div>
+              <ul className="text-[11px] text-muted-foreground space-y-1.5 leading-relaxed">
+                <li className="flex gap-2"><span className="text-muted-foreground/60">1.</span>A unique 6-character access code is generated automatically.</li>
+                <li className="flex gap-2"><span className="text-muted-foreground/60">2.</span>Add MCQ and coding questions, or bulk-import via Excel.</li>
+                <li className="flex gap-2"><span className="text-muted-foreground/60">3.</span>Share the code (or batch link) with candidates.</li>
+              </ul>
+            </div>
+          </aside>
         </form>
       </main>
     </div>
