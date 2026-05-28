@@ -37,26 +37,25 @@ export default function TestForm({ initialData, onSubmit, submitLabel = 'Create 
   };
 
   return (
-    <Card className="bg-slate-800 border-slate-700">
+    <Card>
       <CardHeader>
-        <CardTitle className="text-white">Test Details</CardTitle>
+        <CardTitle>Test Details</CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="title" className="text-slate-200">Test Title</Label>
+            <Label htmlFor="title">Test Title</Label>
             <Input
               id="title"
               type="text"
               placeholder="Enter test title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400"
               required
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="duration" className="text-slate-200">Duration (minutes)</Label>
+            <Label htmlFor="duration">Duration (minutes)</Label>
             <Input
               id="duration"
               type="number"
@@ -64,7 +63,6 @@ export default function TestForm({ initialData, onSubmit, submitLabel = 'Create 
               max={300}
               value={duration}
               onChange={(e) => setDuration(parseInt(e.target.value) || 60)}
-              className="bg-slate-700 border-slate-600 text-white"
               required
             />
           </div>
@@ -74,15 +72,11 @@ export default function TestForm({ initialData, onSubmit, submitLabel = 'Create 
               id="isActive"
               checked={isActive}
               onChange={(e) => setIsActive(e.target.checked)}
-              className="rounded border-slate-600"
+              className="size-4 rounded border-border accent-primary"
             />
-            <Label htmlFor="isActive" className="text-slate-200">Test is active (accepting submissions)</Label>
+            <Label htmlFor="isActive">Test is active (accepting submissions)</Label>
           </div>
-          <Button
-            type="submit"
-            className="w-full bg-blue-600 hover:bg-blue-700"
-            disabled={loading}
-          >
+          <Button type="submit" className="w-full" disabled={loading}>
             {loading ? 'Saving...' : submitLabel}
           </Button>
         </form>

@@ -2,7 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { ArrowRight, Loader2 } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 export default function Home() {
   const router = useRouter();
@@ -53,31 +58,37 @@ export default function Home() {
           <div className="w-2 h-2 rounded-full bg-primary pulse-slow" />
           <span className="text-sm font-medium text-muted-foreground tracking-wide uppercase">LMS</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <ThemeToggle />
           {session?.role === 'student' && (
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => router.push('/student/dashboard')}
-              className="text-xs text-muted-foreground hover:text-primary transition-colors font-mono"
+              className="text-xs font-mono text-muted-foreground hover:text-primary"
             >
-              my tests →
-            </button>
+              my tests <ArrowRight className="size-3.5" />
+            </Button>
           )}
           {session?.role === 'admin' && (
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => router.push('/admin/dashboard')}
-              className="text-xs text-muted-foreground hover:text-primary transition-colors font-mono"
+              className="text-xs font-mono text-muted-foreground hover:text-primary"
             >
-              dashboard →
-            </button>
+              dashboard <ArrowRight className="size-3.5" />
+            </Button>
           )}
           {!session && (
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => router.push('/login')}
-              className="text-xs text-muted-foreground hover:text-primary transition-colors font-mono"
+              className="text-xs font-mono text-muted-foreground hover:text-primary"
             >
-              sign in →
-            </button>
+              sign in <ArrowRight className="size-3.5" />
+            </Button>
           )}
         </div>
       </header>
@@ -98,7 +109,7 @@ export default function Home() {
           {/* Form */}
           <form onSubmit={handleJoinTest} className="space-y-4">
             <div className="relative">
-              <input
+              <Input
                 type="text"
                 placeholder="••••••"
                 value={accessCode}
@@ -107,7 +118,11 @@ export default function Home() {
                   setError('');
                 }}
                 maxLength={6}
-                className="w-full h-14 px-4 bg-card border border-border rounded-lg text-center text-2xl font-mono text-foreground tracking-[0.5em] placeholder:text-muted-foreground/30 placeholder:tracking-[0.3em] focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all"
+                aria-invalid={!!error}
+                className={cn(
+                  'h-14 px-4 text-center text-2xl font-mono tracking-[0.5em]',
+                  'placeholder:text-muted-foreground/30 placeholder:tracking-[0.3em]'
+                )}
               />
               {accessCode.length > 0 && (
                 <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-mono">
@@ -120,28 +135,28 @@ export default function Home() {
               <p className="text-xs text-destructive text-center font-medium">{error}</p>
             )}
 
-            <button
+            <Button
               type="submit"
               disabled={loading || accessCode.length < 6}
-              className="w-full h-11 bg-primary hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground text-primary-foreground font-medium rounded-lg transition-all duration-150 flex items-center justify-center gap-2"
+              className="w-full h-11"
             >
               {loading ? (
-                <div className="w-4 h-4 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin" />
+                <Loader2 className="size-4 animate-spin" />
               ) : (
                 <>
                   <span>Join Test</span>
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                  </svg>
+                  <ArrowRight className="size-4" />
                 </>
               )}
-            </button>
+            </Button>
           </form>
 
           {/* Status indicator */}
-          <div className="mt-8 flex items-center justify-center gap-2 text-xs text-muted-foreground">
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400" />
-            <span>System online</span>
+          <div className="mt-8 flex justify-center">
+            <Badge variant="outline" className="gap-2 font-normal text-muted-foreground">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400" />
+              System online
+            </Badge>
           </div>
         </div>
       </main>

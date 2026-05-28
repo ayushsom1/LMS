@@ -4,6 +4,18 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { formatDuration, formatDate } from '@/lib/utils';
 import ThemeToggle from '@/components/ThemeToggle';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Plus,
+  ArrowRight,
+  FileText,
+  Eye,
+  CalendarClock,
+  PlayCircle,
+} from 'lucide-react';
 
 interface TestInfo {
   id: string;
@@ -117,8 +129,26 @@ export default function StudentDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="w-5 h-5 border-2 border-border border-t-primary rounded-full animate-spin" />
+      <div className="min-h-screen bg-background">
+        <header className="sticky top-0 z-20 bg-background/80 backdrop-blur-sm border-b border-border/50">
+          <div className="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between">
+            <Skeleton className="h-4 w-40" />
+            <Skeleton className="h-8 w-24" />
+          </div>
+        </header>
+        <main className="max-w-4xl mx-auto px-4 py-6">
+          <div className="grid grid-cols-3 gap-3 mb-8">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-[88px] rounded-lg" />
+            ))}
+          </div>
+          <Skeleton className="h-4 w-32 mb-3" />
+          <div className="space-y-2">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-16 rounded-lg" />
+            ))}
+          </div>
+        </main>
       </div>
     );
   }
@@ -128,28 +158,26 @@ export default function StudentDashboard() {
       {/* Header */}
       <header className="sticky top-0 z-20 bg-background/80 backdrop-blur-sm border-b border-border/50">
         <div className="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-2 h-2 rounded-full bg-primary" />
-            <span className="text-sm font-medium text-foreground">My Tests</span>
-            <span className="text-xs text-muted-foreground font-mono truncate max-w-[200px]">{email}</span>
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="size-7 shrink-0 rounded-full bg-primary/15 text-primary flex items-center justify-center text-xs font-semibold uppercase">
+              {(studentName?.[0] || email?.[0] || '?').toUpperCase()}
+            </div>
+            <div className="min-w-0 leading-tight">
+              <p className="text-sm font-medium text-foreground truncate">
+                {studentName ? `Hi, ${studentName.split(' ')[0]}` : 'My Tests'}
+              </p>
+              <p className="text-[11px] text-muted-foreground font-mono truncate max-w-[200px]">{email}</p>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            <button
-              onClick={() => router.push('/')}
-              className="h-8 px-3 bg-secondary hover:bg-secondary/80 text-foreground text-xs font-medium rounded flex items-center gap-1.5 transition-colors"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-              </svg>
+            <Button variant="secondary" size="sm" onClick={() => router.push('/')}>
+              <Plus />
               Take Test
-            </button>
-            <button
-              onClick={handleLogout}
-              className="h-8 px-3 text-muted-foreground hover:text-foreground text-xs font-mono transition-colors"
-            >
+            </Button>
+            <Button variant="ghost" size="sm" className="font-mono text-muted-foreground" onClick={handleLogout}>
               logout
-            </button>
+            </Button>
           </div>
         </div>
       </header>
@@ -157,52 +185,59 @@ export default function StudentDashboard() {
       <main className="max-w-4xl mx-auto px-4 py-6">
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3 mb-8">
-          <div className="p-4 bg-card border border-border/50 rounded-lg">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Tests Taken</p>
-            <p className="text-2xl font-mono text-foreground">{totalTests}</p>
-          </div>
-          <div className="p-4 bg-card border border-border/50 rounded-lg">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Avg Score</p>
-            <p className="text-2xl font-mono text-foreground">{avgScore}<span className="text-sm text-muted-foreground">%</span></p>
-          </div>
-          <div className="p-4 bg-primary/10 border border-primary/30 rounded-lg">
-            <p className="text-[10px] text-primary uppercase tracking-wider mb-1">Best Score</p>
-            <p className="text-2xl font-mono text-primary">{bestScore}<span className="text-sm text-primary/70">%</span></p>
-          </div>
+          <Card className="py-0 gap-0">
+            <CardContent className="p-4">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Tests Taken</p>
+              <p className="text-2xl font-mono text-foreground">{totalTests}</p>
+            </CardContent>
+          </Card>
+          <Card className="py-0 gap-0">
+            <CardContent className="p-4">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Avg Score</p>
+              <p className="text-2xl font-mono text-foreground">{avgScore}<span className="text-sm text-muted-foreground">%</span></p>
+            </CardContent>
+          </Card>
+          <Card className="py-0 gap-0 bg-primary/10 border-primary/30">
+            <CardContent className="p-4">
+              <p className="text-[10px] text-primary uppercase tracking-wider mb-1">Best Score</p>
+              <p className="text-2xl font-mono text-primary">{bestScore}<span className="text-sm text-primary/70">%</span></p>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Upcoming Tests (assigned but not started) */}
         {upcomingTests.length > 0 && (
           <div className="mb-8">
             <h2 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              <CalendarClock className="w-4 h-4 text-emerald-500" />
               Upcoming Tests
               <span className="text-xs text-muted-foreground font-mono">({upcomingTests.length})</span>
             </h2>
             <div className="space-y-2">
               {upcomingTests.map((test) => (
-                <div
+                <Card
                   key={test.id}
-                  className="flex items-center justify-between p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-lg"
+                  className="py-0 gap-0 bg-emerald-500/5 border-emerald-500/20"
                 >
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">{test.title}</p>
-                    <div className="flex items-center gap-3 mt-1">
-                      <span className="text-xs text-muted-foreground font-mono">{formatDuration(test.duration_minutes)}</span>
-                      <span className="text-xs text-muted-foreground">{test.question_count} questions</span>
-                      <span className="text-xs text-muted-foreground">{test.total_points} points</span>
+                  <CardContent className="flex items-center justify-between p-4">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">{test.title}</p>
+                      <div className="flex items-center gap-3 mt-1">
+                        <span className="text-xs text-muted-foreground font-mono">{formatDuration(test.duration_minutes)}</span>
+                        <span className="text-xs text-muted-foreground">{test.question_count} questions</span>
+                        <span className="text-xs text-muted-foreground">{test.total_points} points</span>
+                      </div>
                     </div>
-                  </div>
-                  <button
-                    onClick={() => router.push(`/test/${test.access_code}?email=${encodeURIComponent(email)}`)}
-                    className="ml-4 h-9 px-4 bg-emerald-600 hover:bg-emerald-500 dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white dark:text-zinc-900 text-xs font-medium rounded transition-colors flex items-center gap-1.5"
-                  >
-                    Start Test
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                    </svg>
-                  </button>
-                </div>
+                    <Button
+                      size="sm"
+                      onClick={() => router.push(`/test/${test.access_code}?email=${encodeURIComponent(email)}`)}
+                      className="ml-4 bg-emerald-600 hover:bg-emerald-500 dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white dark:text-zinc-900"
+                    >
+                      Start Test
+                      <ArrowRight />
+                    </Button>
+                  </CardContent>
+                </Card>
               ))}
             </div>
           </div>
@@ -217,32 +252,33 @@ export default function StudentDashboard() {
             </h2>
             <div className="space-y-2">
               {activeTests.map(({ submission, test }) => (
-                <div
+                <Card
                   key={submission.id}
-                  className="flex items-center justify-between p-4 bg-amber-500/5 border border-amber-500/20 rounded-lg"
+                  className="py-0 gap-0 bg-amber-500/5 border-amber-500/20"
                 >
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">{test?.title || 'Unknown Test'}</p>
-                    <div className="flex items-center gap-3 mt-1">
-                      <span className="text-xs text-muted-foreground font-mono">{formatDuration(test?.duration_minutes || 0)}</span>
-                      <span className="text-xs text-muted-foreground">{test?.question_count || 0} questions</span>
-                      {submission.started_at && (
-                        <span className="text-xs text-amber-600 dark:text-amber-400">
-                          Started {formatDate(submission.started_at)}
-                        </span>
-                      )}
+                  <CardContent className="flex items-center justify-between p-4">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">{test?.title || 'Unknown Test'}</p>
+                      <div className="flex items-center gap-3 mt-1">
+                        <span className="text-xs text-muted-foreground font-mono">{formatDuration(test?.duration_minutes || 0)}</span>
+                        <span className="text-xs text-muted-foreground">{test?.question_count || 0} questions</span>
+                        {submission.started_at && (
+                          <span className="text-xs text-amber-600 dark:text-amber-400">
+                            Started {formatDate(submission.started_at)}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                  <button
-                    onClick={() => router.push(`/test/${test?.access_code}?email=${encodeURIComponent(email)}`)}
-                    className="ml-4 h-9 px-4 bg-amber-600 hover:bg-amber-500 dark:bg-amber-500 dark:hover:bg-amber-400 text-white dark:text-zinc-900 text-xs font-medium rounded transition-colors flex items-center gap-1.5"
-                  >
-                    Resume
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                    </svg>
-                  </button>
-                </div>
+                    <Button
+                      size="sm"
+                      onClick={() => router.push(`/test/${test?.access_code}?email=${encodeURIComponent(email)}`)}
+                      className="ml-4 bg-amber-600 hover:bg-amber-500 dark:bg-amber-500 dark:hover:bg-amber-400 text-white dark:text-zinc-900"
+                    >
+                      <PlayCircle />
+                      Resume
+                    </Button>
+                  </CardContent>
+                </Card>
               ))}
             </div>
           </div>
@@ -251,9 +287,7 @@ export default function StudentDashboard() {
         {/* Completed Tests */}
         <div>
           <h2 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
-            <svg className="w-4 h-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
+            <FileText className="w-4 h-4 text-muted-foreground" />
             Completed Tests
             <span className="text-xs text-muted-foreground font-mono">({completedSubmissions.length})</span>
           </h2>
@@ -261,9 +295,7 @@ export default function StudentDashboard() {
           {completedSubmissions.length === 0 ? (
             <div className="text-center py-16 bg-secondary/30 border border-border/30 border-dashed rounded-lg">
               <div className="inline-flex items-center justify-center w-12 h-12 rounded-lg bg-secondary border border-border mb-4">
-                <svg className="w-6 h-6 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
+                <FileText className="w-6 h-6 text-muted-foreground" strokeWidth={1.5} />
               </div>
               <p className="text-sm text-muted-foreground mb-1">No completed tests yet</p>
               <p className="text-xs text-muted-foreground">Your test results will appear here</p>
@@ -295,7 +327,7 @@ export default function StudentDashboard() {
                       <div className="flex items-center gap-2 mt-0.5">
                         <span className="text-[10px] text-muted-foreground">{test?.question_count || 0} questions</span>
                         {submission.auto_submitted && (
-                          <span className="text-[10px] text-destructive">Auto-submitted</span>
+                          <Badge variant="destructive" className="px-1.5 py-0 text-[10px]">Auto-submitted</Badge>
                         )}
                         {(submission.violation_count || 0) > 0 && (
                           <span className="text-[10px] text-amber-600 dark:text-amber-400">
@@ -330,16 +362,15 @@ export default function StudentDashboard() {
                       </span>
                     </div>
                     <div className="col-span-2 flex justify-end">
-                      <button
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => router.push(`/student/results/${submission.id}`)}
-                        className="h-7 px-3 text-xs text-muted-foreground hover:text-foreground hover:bg-secondary rounded transition-colors flex items-center gap-1 opacity-0 group-hover:opacity-100"
+                        className="text-muted-foreground opacity-0 group-hover:opacity-100"
                       >
-                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
+                        <Eye />
                         Details
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 );

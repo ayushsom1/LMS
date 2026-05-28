@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation';
 import { Test } from '@/types';
 import { formatDuration } from '@/lib/utils';
 import ThemeToggle from '@/components/ThemeToggle';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Check, Copy, FileText, Plus, Users } from 'lucide-react';
 
 interface TestWithStats extends Test {
   question_count: number;
@@ -59,30 +62,17 @@ export default function AdminDashboard() {
           </div>
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            <button
-              onClick={() => router.push('/admin/batches')}
-              className="h-8 px-3 bg-secondary hover:bg-secondary/80 text-foreground text-xs font-medium rounded flex items-center gap-1.5 transition-colors"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
+            <Button variant="secondary" size="sm" onClick={() => router.push('/admin/batches')}>
+              <Users />
               Batches
-            </button>
-            <button
-              onClick={() => router.push('/admin/tests/new')}
-              className="h-8 px-3 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-medium rounded flex items-center gap-1.5 transition-colors"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-              </svg>
+            </Button>
+            <Button size="sm" onClick={() => router.push('/admin/tests/new')}>
+              <Plus />
               New Test
-            </button>
-            <button
-              onClick={handleLogout}
-              className="h-8 px-3 text-muted-foreground hover:text-foreground text-xs font-mono transition-colors"
-            >
+            </Button>
+            <Button variant="ghost" size="sm" onClick={handleLogout} className="font-mono text-muted-foreground">
               logout
-            </button>
+            </Button>
           </div>
         </div>
       </header>
@@ -90,23 +80,27 @@ export default function AdminDashboard() {
       {/* Main */}
       <main className="max-w-6xl mx-auto px-4 py-6">
         {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="w-5 h-5 border-2 border-border border-t-primary rounded-full animate-spin" />
+          <div className="space-y-2">
+            <div className="grid grid-cols-12 gap-4 px-4 py-2">
+              <Skeleton className="col-span-4 h-3" />
+              <Skeleton className="col-span-2 h-3" />
+              <Skeleton className="col-span-6 h-3" />
+            </div>
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="px-4 py-3 border border-border/50 rounded-lg">
+                <Skeleton className="h-5 w-1/3" />
+              </div>
+            ))}
           </div>
         ) : tests.length === 0 ? (
           <div className="text-center py-20">
             <div className="inline-flex items-center justify-center w-12 h-12 rounded-lg bg-secondary border border-border mb-4">
-              <svg className="w-6 h-6 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
+              <FileText className="w-6 h-6 text-muted-foreground" />
             </div>
             <p className="text-sm text-muted-foreground mb-4">No tests yet</p>
-            <button
-              onClick={() => router.push('/admin/tests/new')}
-              className="h-9 px-4 bg-secondary hover:bg-secondary/80 text-foreground text-sm font-medium rounded transition-colors"
-            >
+            <Button variant="secondary" onClick={() => router.push('/admin/tests/new')}>
               Create your first test
-            </button>
+            </Button>
           </div>
         ) : (
           <div className="space-y-2">
@@ -137,13 +131,9 @@ export default function AdminDashboard() {
                   >
                     <code className="text-xs text-primary font-mono">{test.access_code}</code>
                     {copiedId === test.id ? (
-                      <svg className="w-3 h-3 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
+                      <Check className="w-3 h-3 text-emerald-500" />
                     ) : (
-                      <svg className="w-3 h-3 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                      </svg>
+                      <Copy className="w-3 h-3 text-muted-foreground" />
                     )}
                   </button>
                 </div>
@@ -167,18 +157,12 @@ export default function AdminDashboard() {
                   )}
                 </div>
                 <div className="col-span-2 flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button
-                    onClick={() => router.push(`/admin/tests/${test.id}`)}
-                    className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground hover:bg-secondary rounded transition-colors"
-                  >
+                  <Button variant="ghost" size="sm" onClick={() => router.push(`/admin/tests/${test.id}`)}>
                     Edit
-                  </button>
-                  <button
-                    onClick={() => router.push(`/admin/tests/${test.id}/results`)}
-                    className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground hover:bg-secondary rounded transition-colors"
-                  >
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => router.push(`/admin/tests/${test.id}/results`)}>
                     Results
-                  </button>
+                  </Button>
                 </div>
               </div>
             ))}

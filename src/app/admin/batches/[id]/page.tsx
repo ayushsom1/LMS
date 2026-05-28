@@ -4,6 +4,21 @@ import { useEffect, useState, useCallback, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { Batch, BatchStudent } from '@/types';
 import Toast, { useToast } from '@/components/Toast';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Card } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { ArrowLeft, UserPlus, Users, X, Loader2 } from 'lucide-react';
 
 export default function BatchDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -96,16 +111,33 @@ export default function BatchDetailPage({ params }: { params: Promise<{ id: stri
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="w-5 h-5 border-2 border-border border-t-primary rounded-full animate-spin" />
+      <div className="min-h-screen bg-background">
+        <div className="h-14 px-6 flex items-center justify-between border-b border-border/50 bg-card/50">
+          <div className="flex items-center gap-4">
+            <Skeleton className="size-5 rounded-md" />
+            <div className="space-y-1.5">
+              <Skeleton className="h-5 w-40" />
+              <Skeleton className="h-3 w-56" />
+            </div>
+          </div>
+          <Skeleton className="h-9 w-32" />
+        </div>
+        <main className="max-w-4xl mx-auto px-6 py-6 space-y-4">
+          <Skeleton className="h-9 w-64" />
+          <Skeleton className="h-4 w-40" />
+          <Skeleton className="h-64 w-full rounded-lg" />
+        </main>
       </div>
     );
   }
 
   if (!batch) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
         <p className="text-muted-foreground">Batch not found</p>
+        <Button variant="link" size="sm" onClick={() => router.push('/admin/batches')}>
+          <ArrowLeft className="size-3.5" /> Back to batches
+        </Button>
       </div>
     );
   }
@@ -116,43 +148,39 @@ export default function BatchDetailPage({ params }: { params: Promise<{ id: stri
 
       {/* Header */}
       <header className="h-14 px-6 flex items-center justify-between border-b border-border/50 bg-card/50">
-        <div className="flex items-center gap-4">
-          <button
+        <div className="flex items-center gap-3">
+          <Button
+            variant="ghost"
+            size="icon-sm"
             onClick={() => router.push('/admin/batches')}
-            className="text-muted-foreground hover:text-foreground transition-colors"
+            className="text-muted-foreground"
+            aria-label="Back to batches"
           >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-          </button>
+            <ArrowLeft className="size-5" />
+          </Button>
           <div>
-            <h1 className="text-lg font-semibold text-foreground">{batch.name}</h1>
+            <h1 className="text-lg font-semibold tracking-tight text-foreground">{batch.name}</h1>
             {batch.description && (
               <p className="text-xs text-muted-foreground">{batch.description}</p>
             )}
           </div>
         </div>
-        <button
-          onClick={() => setShowAddStudents(true)}
-          className="h-9 px-4 bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-medium rounded transition-colors flex items-center gap-2"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-          </svg>
+        <Button onClick={() => setShowAddStudents(true)}>
+          <UserPlus className="size-4" />
           Add Students
-        </button>
+        </Button>
       </header>
 
       {/* Content */}
       <main className="max-w-4xl mx-auto px-6 py-6">
         {/* Search */}
         <div className="mb-4">
-          <input
+          <Input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search students..."
-            className="w-full max-w-xs h-9 px-3 bg-card border border-border rounded text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 transition-colors"
+            className="max-w-xs"
           />
         </div>
 
@@ -164,22 +192,18 @@ export default function BatchDetailPage({ params }: { params: Promise<{ id: stri
         </div>
 
         {students.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="w-12 h-12 mx-auto mb-4 rounded-lg bg-secondary flex items-center justify-center">
-              <svg className="w-6 h-6 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
+          <div className="text-center py-16">
+            <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-secondary flex items-center justify-center">
+              <Users className="w-6 h-6 text-muted-foreground" />
             </div>
             <p className="text-muted-foreground mb-4">No students in this batch</p>
-            <button
-              onClick={() => setShowAddStudents(true)}
-              className="text-sm text-primary hover:text-primary/80"
-            >
+            <Button variant="outline" size="sm" onClick={() => setShowAddStudents(true)}>
+              <UserPlus className="size-3.5" />
               Add students
-            </button>
+            </Button>
           </div>
         ) : (
-          <div className="bg-card border border-border/50 rounded-lg overflow-hidden">
+          <Card className="py-0 overflow-hidden gap-0">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border/50">
@@ -197,83 +221,69 @@ export default function BatchDetailPage({ params }: { params: Promise<{ id: stri
               </thead>
               <tbody>
                 {filteredStudents.map((student) => (
-                  <tr key={student.id} className="border-b border-border/30 last:border-0 hover:bg-secondary/30">
+                  <tr key={student.id} className="border-b border-border/30 last:border-0 hover:bg-secondary/30 transition-colors">
                     <td className="px-4 py-3 text-sm text-foreground">{student.email}</td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">{student.name || '-'}</td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">
+                    <td className="px-4 py-3 text-xs text-muted-foreground tabular-nums">
                       {new Date(student.created_at).toLocaleDateString()}
                     </td>
                     <td className="px-2">
-                      <button
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
                         onClick={() => handleRemoveStudent(student.id)}
-                        className="w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-colors"
+                        className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                        aria-label={`Remove ${student.email}`}
                       >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
+                        <X className="size-4" />
+                      </Button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          </div>
+          </Card>
         )}
       </main>
 
       {/* Add Students Modal */}
-      {showAddStudents && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowAddStudents(false)} />
-          <div className="relative w-full max-w-lg bg-background border border-border/50 rounded-lg shadow-2xl">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
-              <h2 className="text-sm font-medium text-foreground">Add Students</h2>
-              <button
-                onClick={() => setShowAddStudents(false)}
-                className="w-6 h-6 flex items-center justify-center text-muted-foreground hover:text-foreground rounded transition-colors"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+      <Dialog open={showAddStudents} onOpenChange={setShowAddStudents}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Add Students</DialogTitle>
+            <DialogDescription>
+              Paste email addresses — one per line, or comma/space separated.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleAddStudents} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="emails" className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                Student Emails
+              </Label>
+              <Textarea
+                id="emails"
+                value={emailInput}
+                onChange={(e) => setEmailInput(e.target.value)}
+                placeholder={"student1@example.com\nstudent2@example.com\nstudent3@example.com"}
+                rows={8}
+                className="font-mono resize-none"
+                required
+              />
+              <p className="text-[10px] text-muted-foreground">
+                Tip: You can paste a list of emails from a spreadsheet.
+              </p>
             </div>
-            <form onSubmit={handleAddStudents} className="p-4 space-y-4">
-              <div>
-                <label className="block text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5 font-medium">
-                  Student Emails
-                </label>
-                <textarea
-                  value={emailInput}
-                  onChange={(e) => setEmailInput(e.target.value)}
-                  placeholder="Enter email addresses (one per line, or comma/space separated)&#10;&#10;student1@example.com&#10;student2@example.com&#10;student3@example.com"
-                  rows={8}
-                  className="w-full px-3 py-2 bg-card border border-border rounded text-sm text-foreground font-mono placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 transition-colors resize-none"
-                  required
-                />
-                <p className="text-[10px] text-muted-foreground mt-1">
-                  Tip: You can paste a list of emails from a spreadsheet
-                </p>
-              </div>
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowAddStudents(false)}
-                  className="flex-1 h-9 text-xs text-muted-foreground hover:text-foreground bg-secondary/50 hover:bg-secondary rounded transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={adding}
-                  className="flex-1 h-9 text-xs font-medium bg-primary hover:bg-primary/90 text-primary-foreground rounded transition-colors disabled:bg-muted"
-                >
-                  {adding ? 'Adding...' : 'Add Students'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+            <DialogFooter>
+              <Button type="button" variant="secondary" onClick={() => setShowAddStudents(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={adding}>
+                {adding ? <><Loader2 className="size-4 animate-spin" />Adding…</> : 'Add Students'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

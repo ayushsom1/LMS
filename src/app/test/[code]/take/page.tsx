@@ -4,6 +4,20 @@ import { useEffect, useState, useCallback, use, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import CodeEditor from '@/components/CodeEditor';
 import Toast, { useToast } from '@/components/Toast';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
+import {
+  AlertTriangle,
+  ArrowLeft,
+  ArrowRight,
+  CheckCircle2,
+  Maximize,
+  Play,
+  Loader2,
+} from 'lucide-react';
 import { Test, Question, TestCase } from '@/types';
 
 interface RunResult {
@@ -334,8 +348,31 @@ export default function TakeTestPage({ params }: { params: Promise<{ code: strin
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="w-5 h-5 border-2 border-border border-t-primary rounded-full animate-spin" />
+      <div className="h-screen bg-background flex flex-col overflow-hidden">
+        <div className="flex-shrink-0 h-12 px-4 flex items-center justify-between border-b border-border/50 bg-card/50">
+          <div className="flex items-center gap-4">
+            <Skeleton className="h-4 w-40" />
+            <Skeleton className="h-4 w-12" />
+          </div>
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-8 w-20" />
+            <Skeleton className="h-8 w-20" />
+          </div>
+        </div>
+        <div className="flex-shrink-0 px-4 py-2 border-b border-border/50 bg-card/30 flex gap-1.5">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-8 w-8 rounded-md" />
+          ))}
+        </div>
+        <main className="flex-1 overflow-y-auto">
+          <div className="max-w-4xl mx-auto px-4 py-6 space-y-4">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-7 w-2/3" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-4/5" />
+            <Skeleton className="h-64 w-full rounded-lg" />
+          </div>
+        </main>
       </div>
     );
   }
@@ -349,50 +386,46 @@ export default function TakeTestPage({ params }: { params: Promise<{ code: strin
     return (
       <div className="min-h-screen bg-background flex items-center justify-center px-4">
         <Toast messages={toast.toasts} onRemove={toast.removeToast} />
-        <div className="w-full max-w-sm text-center">
-          <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-emerald-500/20 flex items-center justify-center">
-            <svg className="w-8 h-8 text-emerald-500 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
+        <div className="w-full max-w-sm text-center animate-in">
+          <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-emerald-500/15 ring-1 ring-emerald-500/30 flex items-center justify-center">
+            <CheckCircle2 className="w-8 h-8 text-emerald-500 dark:text-emerald-400" />
           </div>
-          <h1 className="text-2xl font-semibold text-foreground mb-2">Submitted</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground mb-1.5">Submitted</h1>
           <p className="text-sm text-muted-foreground mb-6">Your test has been graded</p>
 
           <div className="grid grid-cols-3 gap-3 mb-6">
-            <div className="p-4 bg-card border border-border/50 rounded-lg">
+            <div className="surface-card p-4">
               <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">MCQ</p>
-              <p className="text-xl font-mono text-foreground">
+              <p className="text-xl font-mono tabular-nums text-foreground">
                 {result.mcq_score}<span className="text-sm text-muted-foreground">/{mcqTotal}</span>
               </p>
             </div>
-            <div className="p-4 bg-card border border-border/50 rounded-lg">
+            <div className="surface-card p-4">
               <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Code</p>
-              <p className="text-xl font-mono text-foreground">
+              <p className="text-xl font-mono tabular-nums text-foreground">
                 {result.coding_score}<span className="text-sm text-muted-foreground">/{codingTotal}</span>
               </p>
             </div>
-            <div className="p-4 bg-primary/10 border border-primary/30 rounded-lg">
+            <div className="p-4 rounded-lg bg-primary/10 border border-primary/30">
               <p className="text-[10px] text-primary uppercase tracking-wider mb-1">Total</p>
-              <p className="text-xl font-mono text-primary">
+              <p className="text-xl font-mono tabular-nums text-primary">
                 {result.total_score}<span className="text-sm text-primary/70">/{totalPossible}</span>
               </p>
             </div>
           </div>
 
           {violationCount > 0 && (
-            <p className="text-xs text-amber-500 mb-4">
-              {violationCount} violation(s) recorded during the test
-            </p>
+            <Badge variant="outline" className="mb-4 border-amber-500/40 text-amber-600 dark:text-amber-400">
+              <AlertTriangle className="size-3" />
+              {violationCount} violation(s) recorded
+            </Badge>
           )}
 
           <p className="text-xs text-muted-foreground mb-6">Results will be sent to your email</p>
 
-          <button
-            onClick={() => router.push('/')}
-            className="h-10 px-6 bg-secondary hover:bg-secondary/80 text-foreground text-sm rounded transition-colors"
-          >
+          <Button variant="secondary" size="lg" onClick={() => router.push('/')}>
             Done
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -410,6 +443,7 @@ export default function TakeTestPage({ params }: { params: Promise<{ code: strin
   const isLowTime = timeLeft < 5 * 60 * 1000;
   const isCriticalTime = timeLeft < 60 * 1000;
   const currentRunResults = runResults[currentQuestion.id] || [];
+  const answeredCount = questions.filter((q) => !!answers[q.id]).length;
 
   return (
     <div ref={containerRef} className="h-screen bg-background flex flex-col overflow-hidden">
@@ -417,58 +451,65 @@ export default function TakeTestPage({ params }: { params: Promise<{ code: strin
 
       {/* Fullscreen prompt overlay */}
       {!isFullscreen && !submitted && (
-        <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center">
-          <div className="text-center p-8">
-            <svg className="w-16 h-16 text-amber-500 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-            </svg>
+        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center">
+          <div className="text-center p-8 animate-in">
+            <div className="w-16 h-16 mx-auto mb-5 rounded-full bg-amber-500/15 ring-1 ring-amber-500/30 flex items-center justify-center">
+              <Maximize className="w-8 h-8 text-amber-500" />
+            </div>
             <h2 className="text-xl font-semibold text-white mb-2">Fullscreen Required</h2>
-            <p className="text-zinc-400 mb-6">This test must be taken in fullscreen mode</p>
-            <button
-              onClick={enterFullscreen}
-              className="h-10 px-6 bg-primary hover:bg-primary/90 text-white font-medium rounded transition-colors"
-            >
+            <p className="text-zinc-400 mb-6 text-sm">This test must be taken in fullscreen mode</p>
+            <Button size="lg" onClick={enterFullscreen}>
+              <Maximize className="size-4" />
               Enter Fullscreen
-            </button>
+            </Button>
           </div>
         </div>
       )}
 
       {/* Header */}
-      <header className="flex-shrink-0 h-12 px-4 flex items-center justify-between border-b border-border/50 bg-card/50">
-        <div className="flex items-center gap-4">
-          <span className="text-sm font-medium text-foreground">{test.title}</span>
-          <span className="text-xs text-muted-foreground">
+      <header className="flex-shrink-0 h-12 px-4 flex items-center justify-between border-b border-border/50 bg-card/50 backdrop-blur">
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="text-sm font-medium text-foreground truncate">{test.title}</span>
+          <Badge variant="secondary" className="font-mono tabular-nums shrink-0">
             Q{currentIndex + 1}/{questions.length}
-          </span>
+          </Badge>
           {violationCount > 0 && (
-            <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-600 dark:text-amber-400">
+            <Badge variant="outline" className="shrink-0 border-amber-500/40 text-amber-600 dark:text-amber-400">
+              <AlertTriangle className="size-3" />
               {violationCount}/3 warnings
-            </span>
+            </Badge>
           )}
         </div>
         <div className="flex items-center gap-3">
-          <div className={`px-3 py-1.5 rounded font-mono text-sm ${
+          <div className={cn(
+            "px-3 py-1.5 rounded-md font-mono tabular-nums text-sm font-medium tracking-tight",
             isCriticalTime
               ? 'bg-destructive/20 text-destructive animate-pulse'
               : isLowTime
               ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400'
               : 'bg-secondary text-foreground'
-          }`}>
+          )}>
             {formatTime(timeLeft)}
           </div>
-          <button
+          <Button
+            size="sm"
             onClick={handleSubmit}
             disabled={submitting}
-            className="h-8 px-4 bg-emerald-600 hover:bg-emerald-500 dark:bg-emerald-500 dark:hover:bg-emerald-400 disabled:bg-muted text-white dark:text-zinc-900 text-xs font-medium rounded transition-colors"
+            className="bg-emerald-600 hover:bg-emerald-500 dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white dark:text-zinc-900"
           >
-            {submitting ? 'Submitting...' : 'Submit'}
-          </button>
+            {submitting ? <><Loader2 className="size-3.5 animate-spin" />Submitting</> : 'Submit'}
+          </Button>
         </div>
       </header>
 
       {/* Question navigation */}
-      <div className="flex-shrink-0 px-4 py-2 border-b border-border/50 bg-card/30">
+      <div className="flex-shrink-0 px-4 py-2 border-b border-border/50 bg-card/30 space-y-2">
+        <div className="flex items-center gap-3">
+          <Progress value={(answeredCount / questions.length) * 100} className="h-1.5" />
+          <span className="text-[10px] text-muted-foreground font-mono tabular-nums shrink-0">
+            {answeredCount}/{questions.length} answered
+          </span>
+        </div>
         <div className="flex gap-1.5 overflow-x-auto pb-1">
           {questions.map((q, index) => {
             const isAnswered = !!answers[q.id];
@@ -477,13 +518,15 @@ export default function TakeTestPage({ params }: { params: Promise<{ code: strin
               <button
                 key={q.id}
                 onClick={() => setCurrentIndex(index)}
-                className={`flex-shrink-0 w-8 h-8 rounded text-xs font-mono transition-all ${
+                aria-current={isCurrent ? 'true' : undefined}
+                className={cn(
+                  "flex-shrink-0 w-8 h-8 rounded-md text-xs font-mono transition-all",
                   isCurrent
-                    ? 'bg-primary text-primary-foreground'
+                    ? 'bg-primary text-primary-foreground ring-2 ring-primary/30'
                     : isAnswered
-                    ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
+                    ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/25'
                     : 'bg-secondary text-muted-foreground hover:bg-secondary/80'
-                }`}
+                )}
               >
                 {index + 1}
               </button>
@@ -497,12 +540,18 @@ export default function TakeTestPage({ params }: { params: Promise<{ code: strin
         <div className="max-w-4xl mx-auto px-4 py-4">
           {/* Question header */}
           <div className="flex items-center gap-2 mb-3">
-            <span className={`text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded font-medium ${
-              currentQuestion.type === 'mcq' ? 'bg-blue-500/20 text-blue-600 dark:text-blue-400' : 'bg-purple-500/20 text-purple-600 dark:text-purple-400'
-            }`}>
+            <Badge
+              variant="outline"
+              className={cn(
+                "uppercase",
+                currentQuestion.type === 'mcq'
+                  ? 'border-blue-500/30 bg-blue-500/10 text-blue-600 dark:text-blue-400'
+                  : 'border-purple-500/30 bg-purple-500/10 text-purple-600 dark:text-purple-400'
+              )}
+            >
               {currentQuestion.type}
-            </span>
-            <span className="text-[10px] text-muted-foreground font-mono">{currentQuestion.points} pts</span>
+            </Badge>
+            <span className="text-[10px] text-muted-foreground font-mono tabular-nums">{currentQuestion.points} pts</span>
           </div>
 
           <h2 className="text-lg font-medium text-foreground mb-2">{currentQuestion.title}</h2>
@@ -517,15 +566,23 @@ export default function TakeTestPage({ params }: { params: Promise<{ code: strin
                 // Support both {id, text} objects and plain strings
                 const optionId = typeof option === 'string' ? option : option.id;
                 const optionText = typeof option === 'string' ? option : option.text;
+                const selected = answers[currentQuestion.id] === optionId;
                 return (
                   <button key={optionId || idx}
                     onClick={() => handleAnswerChange(currentQuestion.id, optionId)}
-                    className={`w-full text-left p-3 rounded-lg border transition-all ${
-                      answers[currentQuestion.id] === optionId
+                    className={cn(
+                      "w-full text-left p-3 rounded-lg border transition-all flex items-center gap-3 group",
+                      selected
                         ? 'bg-primary/10 border-primary/50 text-foreground'
-                        : 'bg-card border-border/50 text-foreground hover:border-border'
-                    }`}
+                        : 'bg-card border-border/50 text-foreground hover:border-border hover:bg-accent/5'
+                    )}
                   >
+                    <span className={cn(
+                      "flex-shrink-0 size-4 rounded-full border-2 flex items-center justify-center transition-colors",
+                      selected ? 'border-primary' : 'border-muted-foreground/40 group-hover:border-muted-foreground'
+                    )}>
+                      {selected && <span className="size-2 rounded-full bg-primary" />}
+                    </span>
                     <span className="text-sm">{optionText}</span>
                   </button>
                 );
@@ -610,26 +667,18 @@ export default function TakeTestPage({ params }: { params: Promise<{ code: strin
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-xs text-muted-foreground uppercase tracking-wider">Your Solution (C++)</p>
-                  <button
+                  <Button
+                    size="sm"
                     onClick={() => handleRunCode(currentQuestion.id, currentQuestion.test_cases || [])}
                     disabled={running || !answers[currentQuestion.id]}
-                    className="h-7 px-3 bg-purple-600 hover:bg-purple-500 dark:bg-purple-500 dark:hover:bg-purple-400 disabled:bg-muted disabled:text-muted-foreground text-white dark:text-zinc-900 text-xs font-medium rounded transition-colors flex items-center gap-1.5"
+                    className="bg-purple-600 hover:bg-purple-500 dark:bg-purple-500 dark:hover:bg-purple-400 text-white dark:text-zinc-900"
                   >
                     {running ? (
-                      <>
-                        <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                        Running...
-                      </>
+                      <><Loader2 className="size-3.5 animate-spin" />Running…</>
                     ) : (
-                      <>
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        Run Code
-                      </>
+                      <><Play className="size-3.5" />Run Code</>
                     )}
-                  </button>
+                  </Button>
                 </div>
                 <CodeEditor
                   value={answers[currentQuestion.id] || '#include <iostream>\nusing namespace std;\n\nint main() {\n    // Your code here\n    \n    return 0;\n}'}
@@ -647,13 +696,9 @@ export default function TakeTestPage({ params }: { params: Promise<{ code: strin
                 }`}>
                   <div className="flex items-center gap-2">
                     {currentRunResults.every(r => r.passed) ? (
-                      <svg className="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500" />
                     ) : (
-                      <svg className="w-4 h-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                      </svg>
+                      <AlertTriangle className="w-4 h-4 text-amber-500" />
                     )}
                     <span className={`text-sm font-medium ${
                       currentRunResults.every(r => r.passed) ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'
@@ -675,26 +720,23 @@ export default function TakeTestPage({ params }: { params: Promise<{ code: strin
 
       {/* Footer navigation */}
       <footer className="flex-shrink-0 h-14 px-4 flex items-center justify-between border-t border-border/50 bg-card/30">
-        <button
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={() => setCurrentIndex((prev) => Math.max(0, prev - 1))}
           disabled={currentIndex === 0}
-          className="h-9 px-4 text-xs text-muted-foreground disabled:text-muted-foreground/50 hover:text-foreground disabled:hover:text-muted-foreground/50 bg-secondary/50 hover:bg-secondary disabled:bg-transparent rounded transition-colors flex items-center gap-1.5"
         >
-          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
+          <ArrowLeft className="size-3.5" />
           Previous
-        </button>
-        <button
+        </Button>
+        <Button
+          size="sm"
           onClick={() => setCurrentIndex((prev) => Math.min(questions.length - 1, prev + 1))}
           disabled={currentIndex === questions.length - 1}
-          className="h-9 px-4 text-xs text-primary-foreground disabled:text-muted-foreground bg-primary hover:bg-primary/90 disabled:bg-secondary rounded transition-colors flex items-center gap-1.5"
         >
           Next
-          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
-        </button>
+          <ArrowRight className="size-3.5" />
+        </Button>
       </footer>
     </div>
   );

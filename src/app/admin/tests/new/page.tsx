@@ -4,6 +4,12 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import ThemeToggle from '@/components/ThemeToggle';
 import Toast, { useToast } from '@/components/Toast';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Separator } from '@/components/ui/separator';
+import { ArrowRight, ChevronRight, CalendarClock, Info, Loader2 } from 'lucide-react';
 
 export default function CreateTestPage() {
   const router = useRouter();
@@ -11,6 +17,8 @@ export default function CreateTestPage() {
   const [title, setTitle] = useState('');
   const [duration, setDuration] = useState(60);
   const [isActive, setIsActive] = useState(true);
+  const [startsAt, setStartsAt] = useState('');
+  const [endsAt, setEndsAt] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -21,7 +29,13 @@ export default function CreateTestPage() {
       const response = await fetch('/api/admin/tests', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, duration_minutes: duration, is_active: isActive }),
+        body: JSON.stringify({
+          title,
+          duration_minutes: duration,
+          is_active: isActive,
+          starts_at: startsAt ? new Date(startsAt).toISOString() : null,
+          ends_at: endsAt ? new Date(endsAt).toISOString() : null,
+        }),
       });
 
       if (response.ok) {
@@ -41,111 +55,171 @@ export default function CreateTestPage() {
       <Toast messages={toast.toasts} onRemove={toast.removeToast} />
 
       {/* Header */}
-      <header className="sticky top-0 z-20 bg-background/80 backdrop-blur-sm border-b border-border/50">
-        <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
+      <header className="sticky top-0 z-20 bg-background/85 backdrop-blur border-b border-border/70">
+        <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
               onClick={() => router.push('/admin/dashboard')}
-              className="text-muted-foreground hover:text-foreground transition-colors"
+              className="flex items-center gap-2"
+              aria-label="Testrainer home"
             >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
+              <span className="size-7 rounded-lg bg-primary text-primary-foreground grid place-items-center text-sm font-bold">T</span>
+              <span className="text-sm font-semibold tracking-tight text-foreground">Testrainer</span>
             </button>
-            <span className="text-sm font-medium text-foreground">New Test</span>
+            <Separator orientation="vertical" className="h-5 hidden md:block" />
+            <div className="hidden md:flex items-center gap-1.5 text-xs text-muted-foreground">
+              <button
+                onClick={() => router.push('/admin/dashboard')}
+                className="hover:text-foreground transition-colors"
+              >
+                Tests
+              </button>
+              <ChevronRight className="size-3" />
+              <span className="text-foreground font-medium">New test</span>
+            </div>
           </div>
           <ThemeToggle />
         </div>
       </header>
 
       {/* Main */}
-      <main className="max-w-md mx-auto px-4 py-12">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-lg bg-primary/10 border border-primary/30 mb-4">
-            <svg className="w-6 h-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-          </div>
-          <h1 className="text-xl font-semibold text-foreground">Create Test</h1>
-          <p className="text-sm text-muted-foreground mt-1">Set up your test details</p>
+      <main className="max-w-2xl mx-auto px-6 py-10">
+        <div className="mb-8 animate-in">
+          <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium mb-1">Step 1 of 2</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Create a new test</h1>
+          <p className="text-sm text-muted-foreground mt-1">Set the basics now — you&apos;ll add questions in the next step.</p>
         </div>
 
-        <form onSubmit={handleCreate} className="space-y-4">
-          <div className="p-4 bg-card border border-border/50 rounded-lg space-y-4">
-            <div>
-              <label className="block text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5 font-medium">
-                Test Title
-              </label>
-              <input
+        <form onSubmit={handleCreate} className="space-y-5 animate-in" style={{ animationDelay: '60ms' }}>
+          <div className="surface-elevated p-6 space-y-6">
+            {/* Title */}
+            <div className="space-y-1.5">
+              <Label htmlFor="title">Test title</Label>
+              <Input
+                id="title"
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g., Midterm Exam 2024"
-                className="w-full h-10 px-3 bg-background border border-border rounded text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 transition-colors"
+                placeholder="e.g., Backend Engineer Screening — Round 1"
                 required
+                autoFocus
               />
+              <p className="text-[11px] text-muted-foreground">Shown to candidates when they enter the access code.</p>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5 font-medium">
-                  Duration
-                </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    min={5}
-                    max={300}
-                    value={duration}
-                    onChange={(e) => setDuration(parseInt(e.target.value) || 60)}
-                    className="w-full h-10 px-3 pr-12 bg-background border border-border rounded text-sm text-foreground focus:outline-none focus:border-primary/50 transition-colors"
-                    required
+            {/* Duration */}
+            <div className="space-y-1.5 sm:max-w-[14rem]">
+              <Label htmlFor="duration">Duration</Label>
+              <div className="relative">
+                <Input
+                  id="duration"
+                  type="number"
+                  min={5}
+                  max={300}
+                  value={duration}
+                  onChange={(e) => setDuration(parseInt(e.target.value) || 60)}
+                  className="pr-14 tabular-nums"
+                  required
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-mono uppercase tracking-wider pointer-events-none">min</span>
+              </div>
+              <p className="text-[11px] text-muted-foreground">Between 5 and 300 minutes.</p>
+            </div>
+
+            {/* Visibility — settings row, no wrapping */}
+            <label
+              htmlFor="visibility"
+              className="flex items-center justify-between gap-4 rounded-lg border border-border bg-background px-4 py-3 cursor-pointer"
+            >
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={cnDot(isActive)}
                   />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">min</span>
+                  <span className="text-sm font-medium text-foreground">
+                    {isActive ? 'Active' : 'Inactive'}
+                  </span>
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  {isActive ? 'Accepting submissions. You can flip this anytime.' : 'Not accepting submissions yet.'}
+                </p>
+              </div>
+              <Switch id="visibility" checked={isActive} onCheckedChange={setIsActive} aria-label="Toggle visibility" />
+            </label>
+
+            <Separator />
+
+            {/* Scheduling window */}
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <CalendarClock className="size-4 text-muted-foreground" />
+                <span className="text-sm font-medium text-foreground">Scheduling window</span>
+                <span className="text-[11px] text-muted-foreground font-normal">(optional)</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="startsAt">Available from</Label>
+                  <Input
+                    id="startsAt"
+                    type="datetime-local"
+                    value={startsAt}
+                    onChange={(e) => setStartsAt(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="endsAt">Available until</Label>
+                  <Input
+                    id="endsAt"
+                    type="datetime-local"
+                    value={endsAt}
+                    min={startsAt || undefined}
+                    onChange={(e) => setEndsAt(e.target.value)}
+                  />
                 </div>
               </div>
-              <div>
-                <label className="block text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5 font-medium">
-                  Status
-                </label>
-                <button
-                  type="button"
-                  onClick={() => setIsActive(!isActive)}
-                  className={`w-full h-10 px-3 rounded text-xs font-medium transition-colors ${
-                    isActive
-                      ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
-                      : 'bg-secondary text-muted-foreground border border-border'
-                  }`}
-                >
-                  {isActive ? 'Active' : 'Inactive'}
-                </button>
-              </div>
+              <p className="mt-2.5 text-[11px] text-muted-foreground">
+                Leave blank for no schedule. Students can only start the test inside this window.
+              </p>
             </div>
           </div>
 
-          <div className="p-3 bg-secondary/50 border border-border/30 rounded text-xs text-muted-foreground space-y-1">
-            <p>• An access code will be auto-generated</p>
-            <p>• Add questions after creating the test</p>
+          {/* Info card */}
+          <div className="surface-card p-4 flex gap-3">
+            <div className="size-8 rounded-md bg-primary/10 grid place-items-center flex-shrink-0">
+              <Info className="size-4 text-primary" />
+            </div>
+            <div className="text-xs text-muted-foreground space-y-1 pt-0.5">
+              <p>A unique 6-character access code is generated automatically.</p>
+              <p>You can add MCQ and coding questions in the next step, or bulk-import via Excel.</p>
+            </div>
           </div>
 
-          <button
-            type="submit"
-            disabled={loading || !title.trim()}
-            className="w-full h-11 bg-primary hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground text-primary-foreground font-medium rounded transition-all flex items-center justify-center gap-2"
-          >
-            {loading ? (
-              <div className="w-4 h-4 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <>
-                Create Test
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                </svg>
-              </>
-            )}
-          </button>
+          <div className="flex items-center justify-between gap-3 pt-2">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => router.push('/admin/dashboard')}
+              className="text-muted-foreground"
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={loading || !title.trim()}>
+              {loading ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <>Create test<ArrowRight className="size-4" /></>
+              )}
+            </Button>
+          </div>
         </form>
       </main>
     </div>
   );
+}
+
+function cnDot(active: boolean) {
+  return [
+    'size-1.5 rounded-full',
+    active ? 'bg-emerald-500 dark:bg-emerald-400 pulse-slow' : 'bg-muted-foreground/40',
+  ].join(' ');
 }

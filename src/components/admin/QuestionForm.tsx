@@ -4,6 +4,19 @@ import { useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { MCQOption, TestCase, Question } from '@/types';
 import Toast, { useToast } from '@/components/Toast';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
+import { Check, Plus, X } from 'lucide-react';
 
 interface QuestionFormProps {
   open: boolean;
@@ -173,167 +186,127 @@ export default function QuestionForm({ open, onClose, onSubmit, initialQuestion 
     }
   };
 
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <Toast messages={toast.toasts} onRemove={toast.removeToast} />
+    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent showCloseButton className="max-w-xl gap-0 overflow-hidden p-0">
+        <Toast messages={toast.toasts} onRemove={toast.removeToast} />
 
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={onClose}
-      />
-
-      {/* Modal */}
-      <div className="relative w-full max-w-xl max-h-[85vh] overflow-hidden bg-background border border-border/50 rounded-lg shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
-          <h2 className="text-sm font-medium text-foreground">{isEditing ? 'Edit Question' : 'Add Question'}</h2>
-          <button
-            onClick={onClose}
-            className="w-6 h-6 flex items-center justify-center text-muted-foreground hover:text-foreground rounded transition-colors"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
+        <DialogHeader className="px-4 py-3 border-b border-border/50">
+          <DialogTitle className="text-sm font-medium">{isEditing ? 'Edit Question' : 'Add Question'}</DialogTitle>
+        </DialogHeader>
 
         {/* Type tabs */}
-        <div className="flex border-b border-border/50">
-          <button
-            type="button"
-            onClick={() => setType('mcq')}
-            className={`flex-1 h-10 text-xs font-medium transition-colors ${
-              type === 'mcq'
-                ? 'text-primary border-b-2 border-primary bg-primary/5'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            Multiple Choice
-          </button>
-          <button
-            type="button"
-            onClick={() => setType('coding')}
-            className={`flex-1 h-10 text-xs font-medium transition-colors ${
-              type === 'coding'
-                ? 'text-purple-600 dark:text-purple-400 border-b-2 border-purple-500 bg-purple-500/5'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            Coding (C++)
-          </button>
-        </div>
+        <Tabs value={type} onValueChange={(v) => setType(v as 'mcq' | 'coding')} className="px-4 pt-3">
+          <TabsList className="w-full">
+            <TabsTrigger value="mcq">Multiple Choice</TabsTrigger>
+            <TabsTrigger value="coding">Coding (C++)</TabsTrigger>
+          </TabsList>
+        </Tabs>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="overflow-y-auto max-h-[calc(85vh-120px)]">
+        <form onSubmit={handleSubmit} className="overflow-y-auto max-h-[calc(85vh-160px)]">
           <div className="p-4 space-y-4">
             {/* Title */}
-            <div>
-              <label className="block text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5 font-medium">
-                Question Title
-              </label>
-              <input
+            <div className="space-y-1.5">
+              <Label htmlFor="q-title">Question Title</Label>
+              <Input
+                id="q-title"
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Enter question title"
-                className="w-full h-9 px-3 bg-card border border-border rounded text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 transition-colors"
                 required
               />
             </div>
 
             {/* Description */}
-            <div>
-              <label className="block text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5 font-medium">
-                Description
-              </label>
-              <textarea
+            <div className="space-y-1.5">
+              <Label htmlFor="q-desc">Description</Label>
+              <Textarea
+                id="q-desc"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Enter detailed description..."
                 rows={3}
-                className="w-full px-3 py-2 bg-card border border-border rounded text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 transition-colors resize-none"
+                className="resize-none"
                 required
               />
             </div>
 
             {/* Points */}
-            <div>
-              <label className="block text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5 font-medium">
-                Points
-              </label>
-              <input
+            <div className="space-y-1.5">
+              <Label htmlFor="q-points">Points</Label>
+              <Input
+                id="q-points"
                 type="number"
                 min={1}
                 value={points}
                 onChange={(e) => setPoints(parseInt(e.target.value) || 10)}
-                className="w-24 h-9 px-3 bg-card border border-border rounded text-sm text-foreground focus:outline-none focus:border-primary/50 transition-colors"
+                className="w-24"
               />
             </div>
 
             {/* MCQ Options */}
             {type === 'mcq' && (
-              <div>
-                <label className="block text-[10px] text-muted-foreground uppercase tracking-wider mb-2 font-medium">
-                  Options (select correct)
-                </label>
+              <div className="space-y-2">
+                <Label>Options (select correct)</Label>
                 <div className="space-y-2">
                   {options.map((option, index) => (
                     <div key={option.id} className="flex items-center gap-2">
                       <button
                         type="button"
                         onClick={() => setCorrectAnswer(option.id)}
-                        className={`flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
+                        className={cn(
+                          'flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors',
                           correctAnswer === option.id
                             ? 'border-emerald-500 bg-emerald-500'
                             : 'border-border hover:border-muted-foreground'
-                        }`}
+                        )}
+                        aria-label={`Mark option ${index + 1} as correct`}
                       >
                         {correctAnswer === option.id && (
-                          <svg className="w-3 h-3 text-white dark:text-zinc-900" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                          </svg>
+                          <Check className="w-3 h-3 text-white dark:text-zinc-900" strokeWidth={3} />
                         )}
                       </button>
-                      <input
+                      <Input
                         type="text"
                         value={option.text}
                         onChange={(e) => updateOption(option.id, e.target.value)}
                         placeholder={`Option ${index + 1}`}
-                        className="flex-1 h-9 px-3 bg-card border border-border rounded text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 transition-colors"
                       />
                       {options.length > 2 && (
-                        <button
+                        <Button
                           type="button"
+                          variant="ghost"
+                          size="icon-sm"
                           onClick={() => removeOption(option.id)}
-                          className="flex-shrink-0 w-7 h-7 flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-colors"
+                          className="flex-shrink-0 text-muted-foreground hover:text-destructive"
+                          aria-label="Remove option"
                         >
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
+                          <X className="w-4 h-4" />
+                        </Button>
                       )}
                     </div>
                   ))}
-                  <button
+                  <Button
                     type="button"
+                    variant="outline"
+                    size="sm"
                     onClick={addOption}
-                    className="h-8 px-3 text-xs text-muted-foreground hover:text-foreground border border-dashed border-border hover:border-muted-foreground rounded transition-colors"
+                    className="border-dashed text-muted-foreground"
                   >
-                    + Add option
-                  </button>
+                    <Plus className="w-3.5 h-3.5" />
+                    Add option
+                  </Button>
                 </div>
               </div>
             )}
 
             {/* Coding Test Cases */}
             {type === 'coding' && (
-              <div>
-                <label className="block text-[10px] text-muted-foreground uppercase tracking-wider mb-2 font-medium">
-                  Test Cases
-                </label>
+              <div className="space-y-2">
+                <Label>Test Cases</Label>
                 <div className="space-y-3">
                   {testCases.map((tc, index) => (
                     <div key={tc.id} className="p-3 bg-card border border-border/50 rounded-lg space-y-2">
@@ -345,52 +318,57 @@ export default function QuestionForm({ open, onClose, onSubmit, initialQuestion 
                               type="checkbox"
                               checked={tc.is_hidden}
                               onChange={(e) => updateTestCase(tc.id, 'is_hidden', e.target.checked)}
-                              className="w-3.5 h-3.5 rounded border-border bg-card text-primary focus:ring-0 focus:ring-offset-0"
+                              className="w-3.5 h-3.5 rounded border-border bg-card accent-primary"
                             />
                             Hidden
                           </label>
                           {testCases.length > 1 && (
-                            <button
+                            <Button
                               type="button"
+                              variant="ghost"
+                              size="xs"
                               onClick={() => removeTestCase(tc.id)}
-                              className="text-[10px] text-muted-foreground hover:text-destructive transition-colors"
+                              className="text-muted-foreground hover:text-destructive"
                             >
                               Remove
-                            </button>
+                            </Button>
                           )}
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="block text-[10px] text-muted-foreground mb-1">Input</label>
-                          <textarea
+                        <div className="space-y-1">
+                          <Label className="text-[10px] font-normal text-muted-foreground">Input</Label>
+                          <Textarea
                             value={tc.input}
                             onChange={(e) => updateTestCase(tc.id, 'input', e.target.value)}
                             placeholder="stdin..."
                             rows={2}
-                            className="w-full px-2 py-1.5 bg-secondary/50 border border-border/50 rounded text-xs text-foreground font-mono placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 transition-colors resize-none"
+                            className="bg-secondary/50 text-xs font-mono resize-none min-h-0"
                           />
                         </div>
-                        <div>
-                          <label className="block text-[10px] text-muted-foreground mb-1">Expected Output</label>
-                          <textarea
+                        <div className="space-y-1">
+                          <Label className="text-[10px] font-normal text-muted-foreground">Expected Output</Label>
+                          <Textarea
                             value={tc.expected_output}
                             onChange={(e) => updateTestCase(tc.id, 'expected_output', e.target.value)}
                             placeholder="stdout..."
                             rows={2}
-                            className="w-full px-2 py-1.5 bg-secondary/50 border border-border/50 rounded text-xs text-foreground font-mono placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 transition-colors resize-none"
+                            className="bg-secondary/50 text-xs font-mono resize-none min-h-0"
                           />
                         </div>
                       </div>
                     </div>
                   ))}
-                  <button
+                  <Button
                     type="button"
+                    variant="outline"
+                    size="sm"
                     onClick={addTestCase}
-                    className="h-8 px-3 text-xs text-muted-foreground hover:text-foreground border border-dashed border-border hover:border-muted-foreground rounded transition-colors"
+                    className="border-dashed text-muted-foreground"
                   >
-                    + Add test case
-                  </button>
+                    <Plus className="w-3.5 h-3.5" />
+                    Add test case
+                  </Button>
                 </div>
               </div>
             )}
@@ -398,27 +376,23 @@ export default function QuestionForm({ open, onClose, onSubmit, initialQuestion 
 
           {/* Footer */}
           <div className="flex gap-2 px-4 py-3 border-t border-border/50 bg-card/30">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 h-9 text-xs text-muted-foreground hover:text-foreground bg-secondary/50 hover:bg-secondary rounded transition-colors"
-            >
+            <Button type="button" variant="secondary" onClick={onClose} className="flex-1">
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
               disabled={loading}
-              className={`flex-1 h-9 text-xs font-medium rounded transition-colors ${
-                type === 'mcq'
-                  ? 'bg-primary hover:bg-primary/90 text-primary-foreground'
-                  : 'bg-purple-600 hover:bg-purple-500 dark:bg-purple-500 dark:hover:bg-purple-400 text-white dark:text-zinc-900'
-              } disabled:bg-muted disabled:text-muted-foreground`}
+              className={cn(
+                'flex-1',
+                type === 'coding' &&
+                  'bg-purple-600 hover:bg-purple-500 dark:bg-purple-500 dark:hover:bg-purple-400 text-white dark:text-zinc-900'
+              )}
             >
               {loading ? (isEditing ? 'Saving...' : 'Adding...') : (isEditing ? 'Save Changes' : 'Add Question')}
-            </button>
+            </Button>
           </div>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
